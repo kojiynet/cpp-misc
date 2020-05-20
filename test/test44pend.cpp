@@ -14,6 +14,12 @@
 乱数としての独立性が担保されなくなるから、だろう。
 
 
+kstatにboostを使った相関係数などを入れたい。
+
+ktuilにchronoを使った時間計測を入れたい。
+
+
+
 	XとYを1つの乱数発生器から乱数を得て、交互にXとYに割り当てる。
 	・シングルスレッドのとき、XとYは無相関か？
 	・OpenMPを使うとき、異なるスレッド間で同じ乱数発生器を共有すると、
@@ -38,10 +44,18 @@
 #include <iostream>
 #include <random>
 #include <algorithm>
-#include <k09/kutil01.cpp>
+#include <chrono>
+#include <cstdint>
+//#include <k09/kutil01.cpp>
 #include <k09/kstat02.cpp>
+#include <k09/krand00.cpp>
 
-// あらかじめ最大スレッド数・スレッド番号を得る関数を宣言（定義）
+// あらかじめ最大スレッド数・スレッド番号を得る関数と
+// 使用スレッド数を設定する関数を宣言（定義）
+// Declare/define functions
+// to get the maximum number of threads,
+// to set the number of threads used,
+// and to get ID for the current thread
 #ifdef _OPENMP
 #include <omp.h>
 #else
@@ -58,6 +72,8 @@ int omp_get_thread_num(){ return 0; }
 
 /* ********** Class Declarations ********** */
 
+class RandomNumberEngineMP;
+
 
 /* ********** Enum Definitions ********** */
 
@@ -65,7 +81,10 @@ int omp_get_thread_num(){ return 0; }
 /* ********** Function Declarations ********** */
 
 int main( int, char *[]);
+
 int getNMaxThreads( void);
+void setNThreads( int);
+
 double corr( const std::vector <double> &, const std::vector <double> &);
 double sumofproducts( const std::vector <double> &, const std::vector <double> &);
 double sumofsquares( const std::vector <double> &);
@@ -73,9 +92,28 @@ double sumofsquares( const std::vector <double> &);
 
 /* ********** Class Definitions ********** */
 
+class RandomNumberEngineMP {
+
+private:
+
+	// this instance is used to set seeds of other random number generators
+	std::mt19937 rng;
+	
+public:
+	
+	RandomNumberEngineMP( void);
+	RandomNumberEngineMP( unsigned int);
+	~RandomNumberEngineMP( void);
+	
+	void copyFrom( const RandomNumberEngineMP &);
+	void setSeed( unsigned int);
+
+	std::vector <double> && getRealUniformSeq( int, double = 0.0, double = 1.0);
+
+};
+
 
 /* ********** Global Variables ********** */
-
 
 
 /* ********** Definitions of Static Member Variables ********** */
@@ -86,15 +124,66 @@ double sumofsquares( const std::vector <double> &);
 int main( int argc, char *argv[])
 {
 
+	using time_point = std::chrono::system_clock::time_point;
+
+	int npoints = 50000000;
+
 	static int nthreads = getNMaxThreads();
 
 	std::cout << "N Threads: " << nthreads << std::endl << std::endl;
+
+	// マルチスレッド
+	// 乱数列を1本の長いvectorで返すバージョン
+	{
+		
+		std::cout << "Trial 1" << std::endl;
+
+		time_point startt = std::chrono::system_clock::now();
 	
+		RandomNumberEngineMP xrnemp( 123);
+		RandomNumberEngineMP yrnemp( 456);
+		// ↓この実装を書く
+		// below instances will be initialized by moved objects
+		vector <double> xvec = xrnemp.getRealUniformSeq( npoints, -1.0, 1.0);
+		vector <double> yvec = yrnemp.getRealUniformSeq( npoints, -1.0, 1.0); 
+
+		time_point endt = std::chrono::system_clock::now();
+		auto millisec = std::chrono::duration_cast <chrono::milliseconds> ( endt - startt);
+		std::cout << millisec.count() << " milliseconds passed." << std::endl;
+
+	}
+
+
+	// シングルスレッドでの比較用
+	// 乱数列を1本の長いvectorで返すバージョン
+	{
+		
+		std::cout << "Trial 2" << std::endl;
+
+		time_point startt = std::chrono::system_clock::now();
+	
+		RandomNumberEngine xrne( 123);
+		RandomNumberEngine yrne( 456);
+		// below instances will be initialized by moved objects
+		vector <double> xvec = xrne.getRealUniformSeq( npoints, -1.0, 1.0);
+		vector <double> yvec = yrne.getRealUniformSeq( npoints, -1.0, 1.0); 
+
+		time_point endt = std::chrono::system_clock::now();
+		auto millisec = std::chrono::duration_cast <chrono::milliseconds> ( endt - startt);
+		std::cout << millisec.count() << " milliseconds passed." << std::endl;
+
+	}
+
+
+
+
+
+
 
 
 /*
 
-RNEだけのベクターをコピーで返すバージョンと、1本の長いベクトルで返すバージョンと、スレッド数だけのベクトルにして返すバージョンをつくる。
+1本の長いベクトルで返すバージョンと、スレッド数だけのベクトルにして返すバージョンをつくる。
 omp_set_num_threadsで、スレッド数を指定できるようにする。
 
 
@@ -207,9 +296,19 @@ omp_set_num_threadsで、スレッド数を指定できるようにする。
 }
 
 
+// Returns the maximum number of threads that
+// OpenMP can hold in the environment 
 int getNMaxThreads( void)
 {
 	return omp_get_max_threads();
+}
+
+
+// Sets the number of threads that
+// OpenMP will use  
+void setNThreads( int n0)
+{
+	omp_set_num_threads( n0);
 }
 
 
@@ -268,3 +367,10 @@ double sumofsquares( const std::vector <double> &vec)
 }
 
 /* ********** Definitions of Member Functions ********** */
+
+/* ***** class RandomNumberEngineMP ***** */
+
+
+
+
+
