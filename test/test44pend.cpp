@@ -18,6 +18,8 @@ kstatにboostを使った相関係数などを入れたい。
 
 ktuilにchronoを使った時間計測を入れたい。
 
+moveと&&の関係が難しい。
+
 
 
 	XとYを1つの乱数発生器から乱数を得て、交互にXとYに割り当てる。
@@ -105,10 +107,9 @@ public:
 	RandomNumberEngineMP( unsigned int);
 	~RandomNumberEngineMP( void);
 	
-	void copyFrom( const RandomNumberEngineMP &);
 	void setSeed( unsigned int);
 
-	std::vector <double> && getRealUniformSeq( int, double = 0.0, double = 1.0);
+	std::vector <double> getRealUniformSeq( int, double = 0.0, double = 1.0);
 
 };
 
@@ -142,10 +143,10 @@ int main( int argc, char *argv[])
 	
 		RandomNumberEngineMP xrnemp( 123);
 		RandomNumberEngineMP yrnemp( 456);
-		// ↓この実装を書く
+		// ↓この実装を書く（今のはスケルトン）
 		// below instances will be initialized by moved objects
-		vector <double> xvec = xrnemp.getRealUniformSeq( npoints, -1.0, 1.0);
-		vector <double> yvec = yrnemp.getRealUniformSeq( npoints, -1.0, 1.0); 
+		std::vector <double> xvec = xrnemp.getRealUniformSeq( npoints, -1.0, 1.0);
+		std::vector <double> yvec = yrnemp.getRealUniformSeq( npoints, -1.0, 1.0); 
 
 		time_point endt = std::chrono::system_clock::now();
 		auto millisec = std::chrono::duration_cast <chrono::milliseconds> ( endt - startt);
@@ -370,7 +371,81 @@ double sumofsquares( const std::vector <double> &vec)
 
 /* ***** class RandomNumberEngineMP ***** */
 
+// Default constructor
+// set seed equal to 1 
+RandomNumberEngineMP ::
+RandomNumberEngineMP( void)
+: rng( 1)
+{}
 
+// Constructor
+// set seed equal to s0 
+RandomNumberEngineMP ::
+RandomNumberEngineMP( unsigned int s0)
+{
+	
+	// Because seed of mt19937 is actually set by the type "unit_fast32_t",
+	// the boundary will be checked;
+	// In the most environments "unsigned int" is a 32-bit type.
+	// UINT_FAST32_MAX is defined in <cstdint>
+	
+	if ( s0 > UINT_FAST32_MAX){
+		
+		alert( "RandomNumberEngineMP :: RandomNumberEngineMP()");
+		rng.seed( 1);
+		
+	} else {
+		
+		rng.seed( s0);
+		
+	}
+		
+}
 
+RandomNumberEngineMP ::
+~RandomNumberEngineMP( void)
+{}
+
+// Setting seed as s0
+void 
+RandomNumberEngineMP :: 
+setSeed( unsigned int s0)
+{
+	
+	// Because seed of mt19937 is actually set by the type "unit_fast32_t",
+	// the boundary will be checked;
+	// In the most environments "unsigned int" is a 32-bit type.
+	// UINT_FAST32_MAX is defined in <cstdint>
+	
+	if ( s0 > UINT_FAST32_MAX){
+		
+		alert( "RandomNumberEngineMP :: setSeed()");
+		
+	} else {
+		
+		rng.seed( s0);
+		
+	}
+	
+}
+
+// ↓戻り値の型を&&にしてはいけない。
+// それをすると関数内のみがスコープのオブジェクトの参照が返ってしまうらしい。
+// vectorにはムーブコンストラクタがあるので、move()を使って返せば中身を抜き取ってくれるらしい。
+std::vector <double>  
+RandomNumberEngineMP :: 
+getRealUniformSeq(
+	int npoints,
+	double lower, // = 0.0
+	double upper  // = 1.0
+)
+{
+	
+	std::vector <double> ret( npoints);
+	ret[ 0] = lower;
+	ret[ 1] = upper;
+	return std::move( ret);
+
+}
 
 
