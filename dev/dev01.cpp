@@ -13,7 +13,11 @@
 	新しい方のファイルから改善していく。
 	まず21a-qa-26.cppから。
 	・getBetaRandomVector()をkoliに。
-	　→getBetaRandomVector2()の中につくろうとしている。
+	　→getBetaRandomVector2()の中につくっていっている。
+	　　RandomNumberEngine :: getDistRandomVec() をつくった。
+	　　→確率分布はBoostからきているので、krandboostに一応入れる。
+	　　　krandboostの意味を変える。乱数発生器としてBoostのものを使うわけではない、という。
+
 	・簡易Datasetをつくりたい。
 	　SimpleDataset？
 	　まず、Resultを入れるような用途。
@@ -32,7 +36,7 @@
 #include <iostream>
 #include <functional>
 #include <boost/math/distributions/beta.hpp>
-#include <k09/krand00.cpp>
+#include <k09/krand01.cpp>
 #include <k09/kdataset03.cpp>
 #include <k09/kstat02.cpp>
 #include <k09/kstatboost01.cpp>
@@ -420,35 +424,9 @@ getBetaRandomVector2(
 	double beta = beta_distribution<>::find_beta( mean, sigmasq);
 	beta_distribution<> mybeta( alpha, beta);
 	
-	getDistRandomVec( ret, rne, len, [=]( const double& p){ return quantile( mybeta, p); } );
-
-/*
-	for ( int i = 0; i < len; i++){
-		double rnd = rne.getRealUniform();
-		ret.push_back( quantile( mybeta, rnd));
-	}
-*/
-}
-
-// 分布のQuantileを示す関数（CDFの逆関数）を受け取って、
-// その分布に従う長さlenの乱数列を返す。
-void getDistRandomVec(
-	std::vector <double> &ret,
-	RandomNumberEngine &rne,
-	int len,
-	std::function <double( double)> quantile
-)
-{
-
-	ret.clear();
-	ret.resize( len);
-	for ( int i = 0; i < len; i++){
-		double p = rne.getRealUniform();
-		ret[ i] = quantile( p);
-	}
+	ret = rne.getDistRandomVec( len, [=]( const double& p){ return quantile( mybeta, p); } );
 
 }
-
 
 
 /* ********** Definitions of Member Functions ********** */ 
