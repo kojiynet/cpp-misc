@@ -12,16 +12,12 @@
 
 	新しい方のファイルから改善していく。
 	まず21a-qa-26.cppから。
-	・getBetaRandomVector()をkoliに。
-	　→getBetaRandomVector2()の中につくっていっている。
-	　　RandomNumberEngine :: getDistRandomVec() をつくった。
-	　　→確率分布はBoostからきているので、krandboostに一応入れる。
-	　　　krandboostの意味を変える。乱数発生器としてBoostのものを使うわけではない、という。
 
 	・簡易Datasetをつくりたい。
 	　SimpleDataset？
 	　まず、Resultを入れるような用途。
 	　変数名と対応させつつVectorを持っている、というような。そしてVectorとしてintかdoubleかstringのどれもあり、というような。
+	
 	・簡易Datasetをつくりたい、その2。
 	　乱数でできたデータセットそのものの格納を。
 	
@@ -61,11 +57,6 @@ class MyCase;
 
 int main( int, char *[]);
 int aichi26( void);
-
-void getBetaRandomVector( std::vector <double> &, RandomNumberEngine &, int, double, double);
-void getBetaRandomVector2( std::vector <double> &, RandomNumberEngine &, int, double, double);
-void getDistRandomVec( std::vector <double> &, RandomNumberEngine &, int, std::function <double( double)>);
-
 
 
 /* ********** Class Definitions ********** */
@@ -148,15 +139,15 @@ int aichi26( void)
 	vector <double> score_qayes_f;
 	mu = 70.0 / 100.0;
 	sigma = 10.0 / 100.0;
-	getBetaRandomVector( score_qayes_m, rne, 250'000, mu, sigma * sigma);
-	getBetaRandomVector( score_qayes_f, rne, 250'000, mu, sigma * sigma);
+	getBetaRandomVec( score_qayes_m, rne, 250'000, mu, sigma * sigma);
+	getBetaRandomVec( score_qayes_f, rne, 250'000, mu, sigma * sigma);
 
 	vector <double> score_qano_m;
 	vector <double> score_qano_f;
 	mu = 60.0 / 100.0;
 	sigma = 10.0 / 100.0;
-	getBetaRandomVector( score_qano_m, rne, 250'000, mu, sigma * sigma);
-	getBetaRandomVector( score_qano_f, rne, 250'000, mu, sigma * sigma);
+	getBetaRandomVec( score_qano_m, rne, 250'000, mu, sigma * sigma);
+	getBetaRandomVec( score_qano_f, rne, 250'000, mu, sigma * sigma);
 	
 	// データをケースのvectorにつめる
 	vector <MyCase> popvec; 
@@ -377,54 +368,6 @@ int aichi26( void)
 	}
 
 	return 0;
-
-}
-
-
-void
-getBetaRandomVector(
-	std::vector <double> &ret,
-	RandomNumberEngine &rne,
-	int len,
-	double mean,
-	double sigmasq
-)
-{
-
-	using boost::math::beta_distribution;
-	
-	ret.clear();
-	
-	double alpha = beta_distribution<>::find_alpha( mean, sigmasq);
-	double beta = beta_distribution<>::find_beta( mean, sigmasq);
-	beta_distribution<> mybeta( alpha, beta);
-	
-	for ( int i = 0; i < len; i++){
-		double rnd = rne.getRealUniform();
-		ret.push_back( quantile( mybeta, rnd));
-	}
-
-}
-
-void
-getBetaRandomVector2(
-	std::vector <double> &ret,
-	RandomNumberEngine &rne,
-	int len,
-	double mean,
-	double sigmasq
-)
-{
-
-	using boost::math::beta_distribution;
-	
-	ret.clear();
-	
-	double alpha = beta_distribution<>::find_alpha( mean, sigmasq);
-	double beta = beta_distribution<>::find_beta( mean, sigmasq);
-	beta_distribution<> mybeta( alpha, beta);
-	
-	ret = rne.getDistRandomVec( len, [=]( const double& p){ return quantile( mybeta, p); } );
 
 }
 
