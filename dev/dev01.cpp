@@ -16,7 +16,17 @@
 	・簡易Datasetをつくりたい。
 	　SimpleDataset？
 	　まず、Resultを入れるような用途。
+	　以下を目指すのだがまずdoubleのみで。かつ、宣言のみで使用側を書く。途中。
+
 	　変数名と対応させつつVectorを持っている、というような。そしてVectorとしてintかdoubleかstringのどれもあり、というような。
+	　方針：
+	　　SimpleDataColumnクラスをつくる。これはインターフェース。
+	　　派生クラスとして、doubleとintとstringのColumnを実装。
+	　　中身をdoubleで得たり（stringコラムだとNaN）、stringで得たり（stringstream）できるように。
+	　　　doubleの場合の桁数を指定するのはあとで。。
+	　　それからの、SimpleDatasetで整形しながらostreamに出す、か、koutputfileに渡してファイルに出力。
+	　　※variantを持たせると、いちいちどの型を保持しているかで処理を分けないといけないと思うので、やめる。
+	　　
 	
 	・簡易Datasetをつくりたい、その2。
 	　乱数でできたデータセットそのものの格納を。
@@ -38,6 +48,7 @@
 #include <k09/kstatboost01.cpp>
 #include <k09/koutputfile00.cpp>
 #include <k09/kalgo02.cpp>
+#include <k09/kexcept00.cpp>
 
 
 /* ********** Namespace Declarations/Directives ********** */
@@ -48,6 +59,7 @@
 /* ********** Class Declarations ********** */
 
 class MyCase;
+class SimpleDataSet;
 
 
 /* ********** Enum Definitions ********** */
@@ -75,6 +87,29 @@ public:
 	}
 
 };
+
+// currently testing ******************************************
+// using only doubles as far 
+class SimpleDataSet {
+
+public:
+
+	SimpleDataSet( void);
+	// SimpleDataSet(); // using map
+	~SimpleDataSet( void);
+
+	void setVarNames( const std::vector <std::string> &);
+	void setVarNames( const std::string &); // to be tokenized 
+
+	void addCase( const std::string &, double); // using only doubles as far 
+	bool isRectanglar( void); // check if dataset is recutanglar; typically usable after calling addCase() 
+
+	void writeToStream( std::ostream &);
+	void writeToFile( koutputfile &);
+
+};
+// currently testing ******************************************
+
 
 struct ResultCase {
 	int nobs;
@@ -239,6 +274,16 @@ int aichi26( void)
 		}
 	}
 	
+	// currently testing ******************************************
+	SimpleDataSet resultds; 
+	std::vector <std::string> vnvec { 
+		"nobs", "iter", "n_male", "n_female", "n_qayes", "n_qano",
+		"mean", "mean_male", "mean_female", "mean_qayes", "mean_qano",
+		"gender_diff", "qa_diff"
+	};
+	resultds.setVarNames( vnvec);
+	// currently testing ******************************************
+
 	vector <ResultCase> resultvec;
 
 	// サンプリングする
@@ -301,6 +346,24 @@ int aichi26( void)
 
 			resultvec.push_back( rc);
 
+			// currently testing ******************************************
+			resultds.addCase( "nobs", nobs);
+			resultds.addCase( "iter", j);
+			resultds.addCase( "n_male", svec_male.size());
+			resultds.addCase( "n_female", svec_female.size());
+			resultds.addCase( "n_qayes", svec_qayes.size());
+			resultds.addCase( "n_qano", svec_qano.size());
+			resultds.addCase( "mean", mean( svec));
+			resultds.addCase( "mean_male", mean( svec_male));
+			resultds.addCase( "mean_female", mean( svec_female));
+			resultds.addCase( "mean_qayes", mean( svec_qayes));
+			resultds.addCase( "mean_qano", mean( svec_qano));
+			resultds.addCase( "gender_diff", rc.mean_male - rc.mean_female);
+			resultds.addCase( "qa_diff", rc.mean_qayes - rc.mean_qano);
+			if ( resultds.isRectanglar() == false){
+				throwMsgExcept( "", "data not recutangular");
+			} 
+			// currently testing ******************************************
 		}
 
 		cout << endl;
@@ -308,6 +371,8 @@ int aichi26( void)
 	}
 
 	// 結果を書き込む
+
+	// ******* ここでもresultdsを使う。
 
 	koutputfile kof( output_fn2);
 	bool s = kof.open( false, false, true);
