@@ -16,16 +16,15 @@
 	・簡易Datasetをつくりたい。
 	　SimpleDataset？
 	　まず、Resultを入れるような用途。
-	　以下を目指すのだがまずdoubleのみで。かつ、宣言のみで使用側を書く。途中。
+	　以下を目指すのだがまずdoubleのみで。途中。
 
 	　変数名と対応させつつVectorを持っている、というような。そしてVectorとしてintかdoubleかstringのどれもあり、というような。
 	　方針：
-	　　SimpleDataColumnクラスをつくる。これはインターフェース。
-	　　派生クラスとして、doubleとintとstringのColumnを実装。
+	　　SimpleDataColumnクラスをつくる。
+	　　中にdoubleとintとstringのvectorを持っている。（C++17ならvariantで）
 	　　中身をdoubleで得たり（stringコラムだとNaN）、stringで得たり（stringstream）できるように。
 	　　　doubleの場合の桁数を指定するのはあとで。。
 	　　それからの、SimpleDatasetで整形しながらostreamに出す、か、koutputfileに渡してファイルに出力。
-	　　※variantを持たせると、いちいちどの型を保持しているかで処理を分けないといけないと思うので、やめる。
 	　　
 	
 	・簡易Datasetをつくりたい、その2。
@@ -59,7 +58,7 @@
 /* ********** Class Declarations ********** */
 
 class MyCase;
-class SimpleDataSet;
+class SimpleDataset;
 
 
 /* ********** Enum Definitions ********** */
@@ -90,21 +89,46 @@ public:
 
 // currently testing ******************************************
 // using only doubles as far 
-class SimpleDataSet {
+class SimpleDataset {
 
 public:
 
-	SimpleDataSet( void);
-	// SimpleDataSet(); // using map
-	~SimpleDataSet( void);
+	/* ***** Internal Classes ***** */
 
-	void setVarNames( const std::vector <std::string> &);
-	void setVarNames( const std::string &); // to be tokenized 
+	struct SimpleDataColumn {
+		std::string vname;
+		std::vector <double> dvec;
+		SimpleDataColumn( void) : vname(), dvec(){}
+		~SimpleDataColumn( void){}
+	};
+	
+	/* ***** Data Fields ***** */
+
+	std::vector <SimpleDataColumn> dcvec;
+
+	/* ***** Methods ***** */
+
+	SimpleDataset( void) : dcvec(){};
+//	SimpleDataset(); // using map
+
+	~SimpleDataset( void){};
+
+	void setVarNames( const std::vector <std::string> &vec0)
+	{
+		dcvec.clear();
+		dcvec.resize( vec0.size());
+		for ( int i = 0; i < vec0.size(); i++){
+			dcvec[ i].vname = vec0[ i];
+		}
+	}
+
+//	void setVarNames( const std::string &); // to be tokenized 
 
 	void addCase( const std::string &, double); // using only doubles as far 
 	bool isRectanglar( void); // check if dataset is recutanglar; typically usable after calling addCase() 
+	void assertRecutangular( void); // throw exception if not rectangular 
 
-	void writeToStream( std::ostream &);
+//	void writeToStream( std::ostream &);
 	void writeToFile( koutputfile &);
 
 };
@@ -275,7 +299,7 @@ int aichi26( void)
 	}
 	
 	// currently testing ******************************************
-	SimpleDataSet resultds; 
+	SimpleDataset resultds; 
 	std::vector <std::string> vnvec { 
 		"nobs", "iter", "n_male", "n_female", "n_qayes", "n_qano",
 		"mean", "mean_male", "mean_female", "mean_qayes", "mean_qano",
@@ -363,6 +387,7 @@ int aichi26( void)
 			if ( resultds.isRectanglar() == false){
 				throwMsgExcept( "", "data not recutangular");
 			} 
+			// --->this will form "assertRecutangular()" 
 			// currently testing ******************************************
 		}
 
@@ -430,6 +455,11 @@ int aichi26( void)
 
 		kof.close();
 
+		// currently testing ******************************************
+		resultds.writeToFile( kof);
+		// currently testing ******************************************
+
+
 	}
 
 	return 0;
@@ -438,3 +468,4 @@ int aichi26( void)
 
 
 /* ********** Definitions of Member Functions ********** */ 
+
