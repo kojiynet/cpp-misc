@@ -3,6 +3,9 @@
 
 	dev01.cpp
 
+	compile options:
+	-EHsc -utf-8 -std:c++17
+
 	開発していく用のフォルダ dev
 	このファイルでは、aichiの
 	　21a-qa-14.cpp　～　21a-qa-26.cpp
@@ -15,7 +18,9 @@
 
 	・簡易Datasetをつくりたい。
 	　SimpleDataset？
-	　まず、Resultを入れるような用途。
+	　Resultを入れる→OK
+	　次に、乱数でできたデータセットそのものを格納したい。
+	　	
 	　以下を目指すのだがまずdoubleのみで。途中。
 
 	　変数名と対応させつつVectorを持っている、というような。そしてVectorとしてintかdoubleかstringのどれもあり、というような。
@@ -27,9 +32,6 @@
 	　　それからの、SimpleDatasetで整形しながらostreamに出す、か、koutputfileに渡してファイルに出力。
 	　　
 	
-	・簡易Datasetをつくりたい、その2。
-	　乱数でできたデータセットそのものの格納を。
-	
 
 */
 
@@ -40,6 +42,7 @@
 #include <vector>
 #include <iostream>
 #include <functional>
+#include <tuple>
 #include <boost/math/distributions/beta.hpp>
 #include <k09/krand01.cpp>
 #include <k09/kdataset03.cpp>
@@ -96,10 +99,30 @@ public:
 	/* ***** Internal Classes ***** */
 
 	struct SimpleDataColumn {
+		
 		std::string vname;
-		std::vector <double> dvec;
-		SimpleDataColumn( void) : vname(), dvec(){}
+		std::vector <double> vals;
+		
+		SimpleDataColumn( void) : vname(), vals(){}
 		~SimpleDataColumn( void){}
+
+		std::string getValueStringFormat( int r0)
+		{
+			
+			if ( r0 >= vals.size()){
+				throwMsgExcept( "", "index out of bound");
+			}
+
+			if ( isnan( vals[ r0])){
+				return ".";
+			}
+
+			std::stringstream ss;
+			ss << vals[ r0];
+			return ss.str();
+
+		}
+
 	};
 	
 	/* ***** Data Fields ***** */
@@ -124,24 +147,110 @@ public:
 
 //	void setVarNames( const std::string &); // to be tokenized 
 
-	void addCase( const std::string &, double); // using only doubles as far 
-	bool isRectanglar( void); // check if dataset is recutanglar; typically usable after calling addCase() 
-	void assertRecutangular( void); // throw exception if not rectangular 
+	// add only a value for one-case one-variable 
+	// throws exception if the variable does not exist 
+	// this may cause the dataset non-rectangular 
+	// using only doubles as far 
+	void addCase( const std::string &vn0, double v0)
+	{
+		
+		auto [ b, idx] = getColumnIndex( vn0);
+		if ( b == true){
+			dcvec[ idx].vals.push_back( v0);
+		} else {
+			throwMsgExcept( "", "variable not found");
+		}
+
+	}
+
+	// returns:
+	//   bool: true if the variable exists
+	//   int: index of the column for the variable if it exists; 0 if not
+	std::tuple <bool, int> getColumnIndex( const std::string &vn0)
+	{
+
+		for ( int i = 0; i < dcvec.size(); i++){
+			if ( dcvec[ i].vname == vn0){
+				return { true, i};
+			}
+		}
+
+		return { false, 0};
+
+	}
+
+	// check if dataset is recutanglar
+	// returns true if reculangular (or there is no column)
+	// typically useful after calling addCase() 
+	bool isRectanglar( void)
+	{
+
+		if ( dcvec.size() < 1){
+			return true;
+		}
+
+		int n = dcvec[ 0].vals.size();
+		for ( int i = 1; i < dcvec.size(); i++){
+			if ( dcvec[ i].vals.size() != n){
+				return false;
+			}
+		}
+
+		return true;
+
+	}
+	
+	// throws exception if non-rectangular 
+	void assertRecutangular( void)
+	{
+		if ( isRectanglar() == false){
+			throwMsgExcept( "", "dataset is not rectangular");
+		}
+	}
 
 //	void writeToStream( std::ostream &);
-	void writeToFile( koutputfile &);
+
+	void writeToFile( koutputfile &kof0, const std::string &sep0 = "\t")
+	{
+
+		if ( dcvec.size() < 1){
+			return;
+		}
+
+		// write variable names 
+		{
+			std::string s;
+			s = dcvec[ 0].vname;
+			for ( int i = 1; i < dcvec.size(); i++){
+				s += sep0;
+				s += dcvec[ i].vname;
+			}
+			kof0.writeLine( s);
+		}
+
+		// write values
+		{
+			for ( int i_row = 0; i_row < dcvec[ 0].vals.size(); i_row++){
+
+				int i_col = 0;
+
+				std::stringstream ss;
+				ss << dcvec[ i_col].getValueStringFormat( i_row);
+
+				for ( i_col = 1; i_col < dcvec.size(); i_col++){
+					ss << sep0;
+					ss << dcvec[ i_col].getValueStringFormat( i_row);
+				}
+
+				kof0.writeLine( ss.str());
+
+			}
+		}
+
+	}
 
 };
 // currently testing ******************************************
-
-
-struct ResultCase {
-	int nobs;
-	int iter;
-	int n_male, n_female, n_qayes, n_qano;
-	double mean, mean_male, mean_female, mean_qayes, mean_qano;
-	double gender_diff, qa_diff;
-};
 
 
 /* ********** Global Variables ********** */
@@ -308,8 +417,6 @@ int aichi26( void)
 	resultds.setVarNames( vnvec);
 	// currently testing ******************************************
 
-	vector <ResultCase> resultvec;
-
 	// サンプリングする
 	// そのたびに統計量を算出して記録
 
@@ -351,26 +458,12 @@ int aichi26( void)
 
 
 			}
-			
-			ResultCase rc;
-
-			rc.nobs = nobs;
-			rc.iter = j;
-			rc.n_male = svec_male.size();
-			rc.n_female = svec_female.size();
-			rc.n_qayes = svec_qayes.size();
-			rc.n_qano = svec_qano.size();
-			rc.mean = mean( svec);
-			rc.mean_male = mean( svec_male);
-			rc.mean_female = mean( svec_female);
-			rc.mean_qayes = mean( svec_qayes);
-			rc.mean_qano = mean( svec_qano);
-			rc.gender_diff = rc.mean_male - rc.mean_female;
-			rc.qa_diff = rc.mean_qayes - rc.mean_qano;
-
-			resultvec.push_back( rc);
 
 			// currently testing ******************************************
+			double mean_male = mean( svec_male);
+			double mean_female = mean( svec_female);
+			double mean_qayes = mean( svec_qayes);
+			double mean_qano = mean( svec_qano);
 			resultds.addCase( "nobs", nobs);
 			resultds.addCase( "iter", j);
 			resultds.addCase( "n_male", svec_male.size());
@@ -382,12 +475,9 @@ int aichi26( void)
 			resultds.addCase( "mean_female", mean( svec_female));
 			resultds.addCase( "mean_qayes", mean( svec_qayes));
 			resultds.addCase( "mean_qano", mean( svec_qano));
-			resultds.addCase( "gender_diff", rc.mean_male - rc.mean_female);
-			resultds.addCase( "qa_diff", rc.mean_qayes - rc.mean_qano);
-			if ( resultds.isRectanglar() == false){
-				throwMsgExcept( "", "data not recutangular");
-			} 
-			// --->this will form "assertRecutangular()" 
+			resultds.addCase( "gender_diff", mean_male - mean_female);
+			resultds.addCase( "qa_diff", mean_qayes - mean_qano);
+			resultds.assertRecutangular();
 			// currently testing ******************************************
 		}
 
@@ -397,68 +487,15 @@ int aichi26( void)
 
 	// 結果を書き込む
 
-	// ******* ここでもresultdsを使う。
-
 	koutputfile kof( output_fn2);
 	bool s = kof.open( false, false, true);
 	if ( s == true){
-
-		string t;
-		t = "nobs" "\t" "iter" "\t" "n_male" "\t" "n_female" "\t" "n_qayes" "\t" "n_qano" "\t" "mean" "\t" "mean_male" "\t" "mean_female" "\t" "mean_qayes" "\t" 
-		    "mean_qano" "\t" "gender_diff" "\t" "qa_diff";
-		kof.writeLine( t);
 		
-		for ( auto c : resultvec){
-			stringstream ss;
-			ss << c.nobs << "\t" << c.iter << "\t";
-			ss << c.n_male << "\t";
-			ss << c.n_female << "\t";
-			ss << c.n_qayes << "\t";
-			ss << c.n_qano << "\t";
-			if ( isnan( c.mean)){
-				ss << "." << "\t";
-			} else {
-				ss << c.mean << "\t";
-			}
-			if ( isnan( c.mean_male)){
-				ss << "." << "\t";
-			} else {
-				ss << c.mean_male << "\t";
-			}
-			if ( isnan( c.mean_female)){
-				ss << "." << "\t";
-			} else {
-				ss << c.mean_female << "\t";
-			}
-			if ( isnan( c.mean_qayes)){
-				ss << "." << "\t";
-			} else {
-				ss << c.mean_qayes << "\t";
-			}
-			if ( isnan( c.mean_qano)){
-				ss << "." << "\t";
-			} else {
-				ss << c.mean_qano << "\t";
-			}
-			if ( isnan( c.gender_diff)){
-				ss << "." << "\t";
-			} else {
-				ss << c.gender_diff << "\t";
-			}
-			if ( isnan( c.qa_diff)){
-				ss << ".";
-			} else {
-				ss << c.qa_diff;
-			}
-			kof.writeLine( ss.str());
-		}
-
-		kof.close();
-
 		// currently testing ******************************************
 		resultds.writeToFile( kof);
 		// currently testing ******************************************
 
+		kof.close();
 
 	}
 
