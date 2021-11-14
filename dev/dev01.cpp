@@ -51,6 +51,7 @@
 #include <k09/koutputfile00.cpp>
 #include <k09/kalgo02.cpp>
 #include <k09/kexcept00.cpp>
+#include <k09/kutil02.cpp>
 
 
 /* ********** Namespace Declarations/Directives ********** */
@@ -289,8 +290,7 @@ int aichi26( void)
 	int nsim = 1; 
 
 	// サンプリング時のサンプルサイズの指定
-	std::vector <int> nobsvec = { 3}; // define later
-
+	std::vector <int> nobsvec;
 	nobsvec.resize( 998);
 	for ( int i = 0; i < 998; i++){
 		nobsvec[ i] = i + 3;
@@ -303,10 +303,14 @@ int aichi26( void)
 	double mu;
 	double sigma;
 
+	std::cout << "Generating random numbers..." << std::endl;
+
 	vector <double> score_qayes_m;
 	vector <double> score_qayes_f;
 	mu = 70.0 / 100.0;
 	sigma = 10.0 / 100.0;
+	// ↓この中で時間がかかっている間、別スレッドで"."を表示していきたい気がする。
+	// できれば、現状で何ケースまで抽出できたかの数を共有して、何%進捗しているかを。。
 	getBetaRandomVec( score_qayes_m, rne, 250'000, mu, sigma * sigma);
 	getBetaRandomVec( score_qayes_f, rne, 250'000, mu, sigma * sigma);
 
@@ -318,6 +322,7 @@ int aichi26( void)
 	getBetaRandomVec( score_qano_f, rne, 250'000, mu, sigma * sigma);
 	
 	// データをケースのvectorにつめる
+	Timer tm;
 	vector <MyCase> popvec; 
 	int i = 0;
 	for ( auto v : score_qayes_m){
@@ -360,6 +365,65 @@ int aichi26( void)
 		c.name = ""; 
 		popvec.push_back( c);
 	}
+	tm.markEnd();
+	cout << "Duration for Storing 1: " << tm.getInterval() << " millisecond" << endl;
+
+	// currently testing ******************************************
+
+	// ↓かなり時間がかかる。
+	// 　→vectorをそのまま格納する書き方をしてみて時間を比べたい。
+
+	tm.restart();
+
+	SimpleDataset popds; 
+	// 現状ではnameは使えない。
+	std::vector <std::string> popvnvec { 
+		"id", "gender", "qaclass", "score"
+		/* , "name" */ 
+	};
+	popds.setVarNames( popvnvec);
+
+	i = 0;
+	for ( auto v : score_qayes_m){
+		popds.addCase( "id", i); 
+		popds.addCase( "gender", 1);
+		popds.addCase( "qaclass", 1);
+		popds.addCase( "score", floor( v * 100.0));
+		popds.assertRecutangular();
+		i++;
+	}
+	for ( auto v : score_qayes_f){
+		popds.addCase( "id", i); 
+		popds.addCase( "gender", 2);
+		popds.addCase( "qaclass", 1);
+		popds.addCase( "score", floor( v * 100.0));
+		popds.assertRecutangular();
+		i++;
+	}
+	for ( auto v : score_qano_m){
+		popds.addCase( "id", i); 
+		popds.addCase( "gender", 1);
+		popds.addCase( "qaclass", 0);
+		popds.addCase( "score", floor( v * 100.0));
+		popds.assertRecutangular();
+		i++;
+	}
+	for ( auto v : score_qano_f){
+		popds.addCase( "id", i); 
+		popds.addCase( "gender", 2);
+		popds.addCase( "qaclass", 0);
+		popds.addCase( "score", floor( v * 100.0));
+		popds.assertRecutangular();
+		i++;
+	}
+	tm.markEnd();
+	cout << "Duration for Storing 2: " << tm.getInterval() << " millisecond" << endl;
+
+	// currently testing ******************************************
+
+
+
+
 	
 	// 母集団統計量
 	vector <double> all_vec;
@@ -420,17 +484,11 @@ int aichi26( void)
 	// サンプリングする
 	// そのたびに統計量を算出して記録
 
+	std::cout << "Sampling..." << std::endl;
+
 	for ( int nobs : nobsvec){
 
-		cout << "N Obs: " << nobs << endl;
-
-		cout << "Iteration:";
-
 		for ( int j = 0; j < nsim; j++){
-
-			if ( j % 100 == 1){
-				cout << " " << j;
-			}
 
 			vector <MyCase> samvec = getSample( popvec, rne, nobs);
 
@@ -480,8 +538,6 @@ int aichi26( void)
 			resultds.assertRecutangular();
 			// currently testing ******************************************
 		}
-
-		cout << endl;
 
 	}
 
