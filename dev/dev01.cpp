@@ -43,6 +43,9 @@
 #include <iostream>
 #include <functional>
 #include <tuple>
+#include <algorithm>
+#include <cmath>
+#include <execution>
 #include <boost/math/distributions/beta.hpp>
 #include <k09/krand01.cpp>
 #include <k09/kdataset03.cpp>
@@ -158,6 +161,23 @@ public:
 		auto [ b, idx] = getColumnIndex( vn0);
 		if ( b == true){
 			dcvec[ idx].vals.push_back( v0);
+		} else {
+			throwMsgExcept( "", "variable not found");
+		}
+
+	}
+
+	// add a vector for one-variable 
+	// throws exception if the variable does not exist 
+	// this will usually cause the dataset non-rectangular 
+	// using only doubles as far 
+	void addVector( const std::string &vn0, const std::vector <double> &vec0)
+	{
+		
+		auto [ b, idx] = getColumnIndex( vn0);
+		if ( b == true){
+			auto &alias = dcvec[ idx].vals;
+			alias.insert( alias.end(), vec0.begin(), vec0.end());
 		} else {
 			throwMsgExcept( "", "variable not found");
 		}
@@ -418,6 +438,130 @@ int aichi26( void)
 	}
 	tm.markEnd();
 	cout << "Duration for Storing 2: " << tm.getInterval() << " millisecond" << endl;
+
+
+	// vectorをそのまま入れる方式を試す。
+	// →これが速いが、書き方が長くなってしまう。なんとかclassメソッドにできないか？
+
+	tm.restart();
+
+	SimpleDataset popds2; 
+	// 現状ではnameは使えない。
+	/*
+	// already defined above
+	std::vector <std::string> popvnvec { 
+		"id", "gender", "qaclass", "score"
+		// , "name" 
+	};
+	*/
+	popds2.setVarNames( popvnvec);
+
+	{
+		
+		int len = score_qayes_m.size();
+
+		vector <double> idvec( len);
+		iota( idvec.begin(), idvec.end(), 0.0);
+
+		vector <double> gendervec( len, 1.0);
+
+		vector <double> qaclassvec( len, 1.0);
+
+		vector <double> scorevec = score_qayes_m;
+		
+		std::for_each(
+			scorevec.begin(), scorevec.end(),
+			[]( double& v){ v = std::floor( v * 100.0); }
+		);
+
+		popds2.addVector( "id", idvec);
+		popds2.addVector( "gender", gendervec);
+		popds2.addVector( "qaclass", qaclassvec);
+		popds2.addVector( "score", scorevec);
+		popds2.assertRecutangular();
+
+	}
+
+	{
+		
+		int len = score_qayes_f.size();
+
+		vector <double> idvec( len);
+		iota( idvec.begin(), idvec.end(), 0.0);
+
+		vector <double> gendervec( len, 2.0);
+
+		vector <double> qaclassvec( len, 1.0);
+
+		vector <double> scorevec = score_qayes_f;
+		
+		std::for_each(
+			scorevec.begin(), scorevec.end(),
+			[]( double& v){ v = std::floor( v * 100.0); }
+		);
+
+		popds2.addVector( "id", idvec);
+		popds2.addVector( "gender", gendervec);
+		popds2.addVector( "qaclass", qaclassvec);
+		popds2.addVector( "score", scorevec);
+		popds2.assertRecutangular();
+
+	}
+
+	{
+		
+		int len = score_qano_m.size();
+
+		vector <double> idvec( len);
+		iota( idvec.begin(), idvec.end(), 0.0);
+
+		vector <double> gendervec( len, 1.0);
+
+		vector <double> qaclassvec( len, 0.0);
+
+		vector <double> scorevec = score_qano_m;
+		
+		std::for_each(
+			scorevec.begin(), scorevec.end(),
+			[]( double& v){ v = std::floor( v * 100.0); }
+		);
+
+		popds2.addVector( "id", idvec);
+		popds2.addVector( "gender", gendervec);
+		popds2.addVector( "qaclass", qaclassvec);
+		popds2.addVector( "score", scorevec);
+		popds2.assertRecutangular();
+
+	}
+
+	{
+		
+		int len = score_qano_f.size();
+
+		vector <double> idvec( len);
+		iota( idvec.begin(), idvec.end(), 0.0);
+
+		vector <double> gendervec( len, 2.0);
+
+		vector <double> qaclassvec( len, 0.0);
+
+		vector <double> scorevec = score_qano_f;
+		
+		std::for_each(
+			scorevec.begin(), scorevec.end(),
+			[]( double& v){ v = std::floor( v * 100.0); }
+		);
+
+		popds2.addVector( "id", idvec);
+		popds2.addVector( "gender", gendervec);
+		popds2.addVector( "qaclass", qaclassvec);
+		popds2.addVector( "score", scorevec);
+		popds2.assertRecutangular();
+
+	}
+
+	tm.markEnd();
+	cout << "Duration for Storing 3: " << tm.getInterval() << " millisecond" << endl;
 
 	// currently testing ******************************************
 
