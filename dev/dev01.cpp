@@ -16,10 +16,10 @@
 	新しい方のファイルから改善していく。
 	まず21a-qa-26.cppから。
 
-	・簡易Datasetをつくりたい。
-	　SimpleDataset？
+	・SimpleDatasetをつくる。
 	　Resultを入れる→OK
-	　次に、乱数でできたデータセットそのものを格納したい。
+	　乱数でできたデータセットそのものを格納したい→OK
+	　次に、母集団統計量をデータセットから出す。
 	　	
 	　以下を目指すのだがまずdoubleのみで。途中。
 
@@ -75,6 +75,15 @@ class SimpleDataset;
 
 int main( int, char *[]);
 int aichi26( void);
+
+// overwrte each element with the floored value
+void floor( std::vector <double> &vec0)
+{
+	std::for_each(
+		vec0.begin(), vec0.end(),
+		[]( double& v){ v = std::floor( v * 100.0); }
+	);
+}
 
 
 /* ********** Class Definitions ********** */
@@ -184,6 +193,54 @@ public:
 
 	}
 
+	// add a set of sequntial numbers
+	// starting "s0", of size "len0"
+	// throws exception if the variable does not exist 
+	// this will usually cause the dataset non-rectangular 
+	// using only doubles as far 
+	void addSequentialNumber( const std::string &vn0, double s0, int len0)
+	{
+		
+		auto [ b, idx] = getColumnIndex( vn0);
+
+		if ( b == true){
+
+			std::vector <double> vec0( len0);
+			std::iota( vec0.begin(), vec0.end(), s0);
+			auto &alias = dcvec[ idx].vals;
+			alias.insert( alias.end(), vec0.begin(), vec0.end());
+
+		} else {
+
+			throwMsgExcept( "", "variable not found");
+
+		}
+
+	}
+
+	// add a vector of a constatn "c0" of the specified size "len0" 
+	// throws exception if the variable does not exist 
+	// this will usually cause the dataset non-rectangular 
+	// using only doubles as far 
+	void addConstant( const std::string &vn0, double c0, int len0)
+	{
+		
+		auto [ b, idx] = getColumnIndex( vn0);
+
+		if ( b == true){
+
+			std::vector <double> vec0( len0, c0);
+			auto &alias = dcvec[ idx].vals;
+			alias.insert( alias.end(), vec0.begin(), vec0.end());
+
+		} else {
+
+			throwMsgExcept( "", "variable not found");
+
+		}
+
+	}
+
 	// returns:
 	//   bool: true if the variable exists
 	//   int: index of the column for the variable if it exists; 0 if not
@@ -267,6 +324,28 @@ public:
 
 			}
 		}
+
+	}
+
+	// returns the length of the longetst column
+	// this works even if no variable exists 
+	// or the dataset is non-rectangular
+	int size( void) const 
+	{
+		
+		if ( dcvec.size() < 1){
+			return 0;
+		}
+
+		int ret = dcvec[ 0].vals.size();
+		for ( int i = 1; i < dcvec.size(); i++){
+			int n = dcvec[ i].vals.size();
+			if ( n > ret){
+				ret = n;
+			}
+		}
+
+		return ret;
 
 	}
 
@@ -390,181 +469,84 @@ int aichi26( void)
 
 	// currently testing ******************************************
 
-	// ↓かなり時間がかかる。
-	// 　→vectorをそのまま格納する書き方をしてみて時間を比べたい。
-
 	tm.restart();
 
-	SimpleDataset popds; 
+	SimpleDataset popds3; 
 	// 現状ではnameは使えない。
-	std::vector <std::string> popvnvec { 
-		"id", "gender", "qaclass", "score"
-		/* , "name" */ 
-	};
-	popds.setVarNames( popvnvec);
-
-	i = 0;
-	for ( auto v : score_qayes_m){
-		popds.addCase( "id", i); 
-		popds.addCase( "gender", 1);
-		popds.addCase( "qaclass", 1);
-		popds.addCase( "score", floor( v * 100.0));
-		popds.assertRecutangular();
-		i++;
-	}
-	for ( auto v : score_qayes_f){
-		popds.addCase( "id", i); 
-		popds.addCase( "gender", 2);
-		popds.addCase( "qaclass", 1);
-		popds.addCase( "score", floor( v * 100.0));
-		popds.assertRecutangular();
-		i++;
-	}
-	for ( auto v : score_qano_m){
-		popds.addCase( "id", i); 
-		popds.addCase( "gender", 1);
-		popds.addCase( "qaclass", 0);
-		popds.addCase( "score", floor( v * 100.0));
-		popds.assertRecutangular();
-		i++;
-	}
-	for ( auto v : score_qano_f){
-		popds.addCase( "id", i); 
-		popds.addCase( "gender", 2);
-		popds.addCase( "qaclass", 0);
-		popds.addCase( "score", floor( v * 100.0));
-		popds.assertRecutangular();
-		i++;
-	}
-	tm.markEnd();
-	cout << "Duration for Storing 2: " << tm.getInterval() << " millisecond" << endl;
-
-
-	// vectorをそのまま入れる方式を試す。
-	// →これが速いが、書き方が長くなってしまう。なんとかclassメソッドにできないか？
-
-	tm.restart();
-
-	SimpleDataset popds2; 
-	// 現状ではnameは使えない。
-	/*
-	// already defined above
 	std::vector <std::string> popvnvec { 
 		"id", "gender", "qaclass", "score"
 		// , "name" 
 	};
-	*/
-	popds2.setVarNames( popvnvec);
+	popds3.setVarNames( popvnvec);
 
 	{
 		
-		int len = score_qayes_m.size();
-
-		vector <double> idvec( len);
-		iota( idvec.begin(), idvec.end(), 0.0);
-
-		vector <double> gendervec( len, 1.0);
-
-		vector <double> qaclassvec( len, 1.0);
+		int currentsize = popds3.size(); // 最長コラムの長さ
 
 		vector <double> scorevec = score_qayes_m;
-		
-		std::for_each(
-			scorevec.begin(), scorevec.end(),
-			[]( double& v){ v = std::floor( v * 100.0); }
-		);
+		floor( scorevec);
+		int len = scorevec.size();
 
-		popds2.addVector( "id", idvec);
-		popds2.addVector( "gender", gendervec);
-		popds2.addVector( "qaclass", qaclassvec);
-		popds2.addVector( "score", scorevec);
-		popds2.assertRecutangular();
+		popds3.addSequentialNumber( "id", ( double)currentsize, len);
+		popds3.addConstant( "gender", 1.0, len);
+		popds3.addConstant( "qaclass", 1.0, len);
+		popds3.addVector( "score", scorevec);
+		popds3.assertRecutangular();
 
 	}
 
 	{
 		
-		int len = score_qayes_f.size();
-
-		vector <double> idvec( len);
-		iota( idvec.begin(), idvec.end(), 0.0);
-
-		vector <double> gendervec( len, 2.0);
-
-		vector <double> qaclassvec( len, 1.0);
+		int currentsize = popds3.size(); // 最長コラムの長さ
 
 		vector <double> scorevec = score_qayes_f;
-		
-		std::for_each(
-			scorevec.begin(), scorevec.end(),
-			[]( double& v){ v = std::floor( v * 100.0); }
-		);
+		floor( scorevec);
+		int len = scorevec.size();
 
-		popds2.addVector( "id", idvec);
-		popds2.addVector( "gender", gendervec);
-		popds2.addVector( "qaclass", qaclassvec);
-		popds2.addVector( "score", scorevec);
-		popds2.assertRecutangular();
+		popds3.addSequentialNumber( "id", ( double)currentsize, len);
+		popds3.addConstant( "gender", 2.0, len);
+		popds3.addConstant( "qaclass", 1.0, len);
+		popds3.addVector( "score", scorevec);
+		popds3.assertRecutangular();
 
 	}
 
 	{
 		
-		int len = score_qano_m.size();
-
-		vector <double> idvec( len);
-		iota( idvec.begin(), idvec.end(), 0.0);
-
-		vector <double> gendervec( len, 1.0);
-
-		vector <double> qaclassvec( len, 0.0);
+		int currentsize = popds3.size(); // 最長コラムの長さ
 
 		vector <double> scorevec = score_qano_m;
-		
-		std::for_each(
-			scorevec.begin(), scorevec.end(),
-			[]( double& v){ v = std::floor( v * 100.0); }
-		);
+		floor( scorevec);
+		int len = scorevec.size();
 
-		popds2.addVector( "id", idvec);
-		popds2.addVector( "gender", gendervec);
-		popds2.addVector( "qaclass", qaclassvec);
-		popds2.addVector( "score", scorevec);
-		popds2.assertRecutangular();
+		popds3.addSequentialNumber( "id", ( double)currentsize, len);
+		popds3.addConstant( "gender", 1.0, len);
+		popds3.addConstant( "qaclass", 0.0, len);
+		popds3.addVector( "score", scorevec);
+		popds3.assertRecutangular();
 
 	}
 
 	{
 		
-		int len = score_qano_f.size();
-
-		vector <double> idvec( len);
-		iota( idvec.begin(), idvec.end(), 0.0);
-
-		vector <double> gendervec( len, 2.0);
-
-		vector <double> qaclassvec( len, 0.0);
+		int currentsize = popds3.size(); // 最長コラムの長さ
 
 		vector <double> scorevec = score_qano_f;
-		
-		std::for_each(
-			scorevec.begin(), scorevec.end(),
-			[]( double& v){ v = std::floor( v * 100.0); }
-		);
+		floor( scorevec);
+		int len = scorevec.size();
 
-		popds2.addVector( "id", idvec);
-		popds2.addVector( "gender", gendervec);
-		popds2.addVector( "qaclass", qaclassvec);
-		popds2.addVector( "score", scorevec);
-		popds2.assertRecutangular();
+		popds3.addSequentialNumber( "id", ( double)currentsize, len);
+		popds3.addConstant( "gender", 2.0, len);
+		popds3.addConstant( "qaclass", 0.0, len);
+		popds3.addVector( "score", scorevec);
+		popds3.assertRecutangular();
 
 	}
 
 	tm.markEnd();
-	cout << "Duration for Storing 3: " << tm.getInterval() << " millisecond" << endl;
+	cout << "Duration for Storing 2: " << tm.getInterval() << " millisecond" << endl;
 
 	// currently testing ******************************************
-
 
 
 
