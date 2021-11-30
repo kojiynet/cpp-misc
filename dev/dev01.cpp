@@ -241,6 +241,16 @@ public:
 
 	}
 
+
+
+
+	// skelton 
+	std::vector <double> getVector( const std::string &vn0);
+	std::vector <double> getVectorIf( const std::string &vn0, const std::string &ifvn0, std::function <bool(double)>);
+
+
+
+
 	// returns:
 	//   bool: true if the variable exists
 	//   int: index of the column for the variable if it exists; 0 if not
@@ -596,6 +606,41 @@ int aichi26( void)
 			kof.writeLine( ss.str());
 		}
 	}
+	
+	// currently testing ******************************************
+	vector <double> all_vec_test = popds3.getVector( "score");
+	vector <double> all_sq_vec_test = all_vec_test;
+	std::for_each(
+		all_sq_vec_test.begin(), all_sq_vec_test.end(),
+		[]( double v){ return v * v;}
+	);
+	vector <double> male_vec_test = 
+		popds3.getVectorIf(
+			"score", "gender",
+			[]( double v){ return ( std::round( v) == 1.0); }
+		);
+	vector <double> female_vec_test =
+		popds3.getVectorIf(
+			"score", "gender",
+			[]( double v){ return ( std::round( v) == 2.0); }
+		);
+	vector <double> qayes_vec_test =
+		popds3.getVectorIf(
+			"score", "qaclass",
+			[]( double v){ return ( std::round( v) == 1.0); }
+		);
+	vector <double> qano_vec_test =
+		popds3.getVectorIf(
+			"score", "qaclass",
+			[]( double v){ return ( std::round( v) == 0.0); }
+		);
+
+	// currently testing ******************************************
+	
+
+
+
+
 	
 	// currently testing ******************************************
 	SimpleDataset resultds; 
