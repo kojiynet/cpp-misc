@@ -19,7 +19,7 @@
 	・SimpleDatasetをつくる。
 	　Resultを入れる→OK
 	　乱数でできたデータセットそのものを格納したい→OK
-	　次に、母集団統計量をデータセットから出す。
+	　母集団統計量をデータセットから出す→OK
 	　	
 	　以下を目指すのだがまずdoubleのみで。途中。
 
@@ -76,7 +76,7 @@ class SimpleDataset;
 int main( int, char *[]);
 int aichi26( void);
 
-// overwrte each element with the floored value
+// overwrite each element with the floored value
 void floor( std::vector <double> &vec0)
 {
 	std::for_each(
@@ -241,15 +241,55 @@ public:
 
 	}
 
+	// returns the vector of the variable named "vn0"
+	// throws exception if the variable does not exist 
+	std::vector <double> getVector( const std::string &vn0)
+	{
 
+		auto [ b, idx] = getColumnIndex( vn0);
 
+		if ( b == false){
+			throwMsgExcept( "", "variable not found");
+		}
 
-	// skelton 
-	std::vector <double> getVector( const std::string &vn0);
-	std::vector <double> getVectorIf( const std::string &vn0, const std::string &ifvn0, std::function <bool(double)>);
+		return dcvec[ idx].vals;
 
+	}
 
+	// returns the vector of the variable named "vn0", only for the cases where 
+	// the value of "ifvn0" satisfies the condition given by the function "func0"
+	// throws exception if the variable does not exist 
+	std::vector <double> getVectorIf( const std::string &vn0, const std::string &ifvn0, std::function <bool(double)> func0)
+	{
 
+		auto [ b1, idx1] = getColumnIndex( vn0);
+		if ( b1 == false){
+			throwMsgExcept( "", "variable not found: " + vn0);
+		}
+
+		auto [ b2, idx2] = getColumnIndex( ifvn0);
+		if ( b2 == false){
+			throwMsgExcept( "", "variable not found: " + ifvn0);
+		}
+
+		const auto &vals_to_return = dcvec[ idx1].vals;
+		const auto &vals_for_cond = dcvec[ idx2].vals;
+
+		int len = vals_to_return.size();
+		if ( len != vals_for_cond.size()){
+			throwMsgExcept( "", "sizes of two variables not equal");
+		}
+
+		std::vector <double> ret;
+		for ( int i = 0; i < len; i++){
+			if ( func0( vals_for_cond[ i]) == true){
+				ret.push_back( vals_to_return[ i]);
+			}
+		}
+
+		return ret;
+		
+	}
 
 	// returns:
 	//   bool: true if the variable exists
@@ -478,6 +518,7 @@ int aichi26( void)
 	cout << "Duration for Storing 1: " << tm.getInterval() << " millisecond" << endl;
 
 	// currently testing ******************************************
+	// from here 
 
 	tm.restart();
 
@@ -560,7 +601,8 @@ int aichi26( void)
 
 
 
-	
+	tm.restart();
+
 	// 母集団統計量
 	vector <double> all_vec;
 	vector <double> all_sq_vec;
@@ -607,7 +649,12 @@ int aichi26( void)
 		}
 	}
 	
+	tm.markEnd();
+	cout << "Duration for calculating pop stats 1: " << tm.getInterval() << " millisecond" << endl;
+
 	// currently testing ******************************************
+	// from here:
+	tm.restart();
 	vector <double> all_vec_test = popds3.getVector( "score");
 	vector <double> all_sq_vec_test = all_vec_test;
 	std::for_each(
@@ -634,7 +681,34 @@ int aichi26( void)
 			"score", "qaclass",
 			[]( double v){ return ( std::round( v) == 0.0); }
 		);
-
+	
+	{
+		koutputfile kof( output_fn1);
+		bool b = kof.open( true, false, false); // append mode 
+		if ( b == true){
+			kof.writeLine( "");
+			kof.writeLine( "***** currently testing *****");
+			stringstream ss;
+			ss << "mean" "\t" << mean( all_vec_test) << endl
+			   << "mean male" "\t" << mean( male_vec_test) << endl
+			   << "mean female" "\t" << mean( female_vec_test) << endl
+			   << "mean qayes" "\t" << mean( qayes_vec_test) << endl
+			   << "mean qano" "\t" << mean( qano_vec_test) << endl
+			   << "var(all)" "\t" << unbiasedVarBoost( all_vec_test) << endl
+			   << "var(male)" "\t" << unbiasedVarBoost( male_vec_test) << endl
+			   << "var(female)" "\t" << unbiasedVarBoost( female_vec_test) << endl
+			   << "var(qayes)" "\t" << unbiasedVarBoost( qayes_vec_test) << endl
+			   << "var(qano)" "\t" << unbiasedVarBoost( qano_vec_test) << endl
+			   << "N" "\t" << all_vec_test.size() << endl
+			   << "N male" "\t" << male_vec_test.size() << endl
+			   << "N female" "\t" << female_vec_test.size() << endl
+			   << "N qayes" "\t" << qayes_vec_test.size() << endl
+			   << "N qano" "\t" << qano_vec_test.size() << endl;
+			kof.writeLine( ss.str());
+		}
+	}
+	tm.markEnd();
+	cout << "Duration for calculating pop stats 2: " << tm.getInterval() << " millisecond" << endl;
 	// currently testing ******************************************
 	
 
