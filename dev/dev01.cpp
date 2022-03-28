@@ -20,13 +20,18 @@
 	　Resultを入れる→OK
 	　乱数でできたデータセットそのものを格納したい→OK
 	　母集団統計量をデータセットから出す→OK
+	　サンプリングをデータセットからする　←これをやる！
+	　そのあと、もとのコードをうしろからコメントアウトしていって確認。
+
+
+
 	　	
 	　以下を目指すのだがまずdoubleのみで。途中。
 
 	　変数名と対応させつつVectorを持っている、というような。そしてVectorとしてintかdoubleかstringのどれもあり、というような。
 	　方針：
 	　　SimpleDataColumnクラスをつくる。
-	　　中にdoubleとintとstringのvectorを持っている。（C++17ならvariantで）
+	　　中にdoubleとstringのvectorを持っている。（C++17ならvariantで）
 	　　中身をdoubleで得たり（stringコラムだとNaN）、stringで得たり（stringstream）できるように。
 	　　　doubleの場合の桁数を指定するのはあとで。。
 	　　それからの、SimpleDatasetで整形しながらostreamに出す、か、koutputfileに渡してファイルに出力。
@@ -81,7 +86,16 @@ void floor( std::vector <double> &vec0)
 {
 	std::for_each(
 		vec0.begin(), vec0.end(),
-		[]( double& v){ v = std::floor( v * 100.0); }
+		[]( double& v){ v = std::floor( v); }
+	);
+}
+
+// overwrite each element with the value multiplied by d0 
+void mulBy( std::vector <double> &vec0, double d0)
+{
+	std::for_each(
+		vec0.begin(), vec0.end(),
+		[=]( double& v){ v *= d0; }
 	);
 }
 
@@ -458,6 +472,8 @@ int aichi26( void)
 	vector <double> score_qayes_f;
 	mu = 70.0 / 100.0;
 	sigma = 10.0 / 100.0;
+	// ↑ここで100で割らねばならないのは、getBetaRandomVec()が[0,1]しか返さないから、か。
+	// 　ならば、getBetaRandomVec()で範囲指定する引数をつくりたい。
 	// ↓この中で時間がかかっている間、別スレッドで"."を表示していきたい気がする。
 	// できれば、現状で何ケースまで抽出できたかの数を共有して、何%進捗しているかを。。
 	getBetaRandomVec( score_qayes_m, rne, 250'000, mu, sigma * sigma);
@@ -522,75 +538,79 @@ int aichi26( void)
 
 	tm.restart();
 
-	SimpleDataset popds3; 
+	SimpleDataset popds; 
 	// 現状ではnameは使えない。
 	std::vector <std::string> popvnvec { 
 		"id", "gender", "qaclass", "score"
 		// , "name" 
 	};
-	popds3.setVarNames( popvnvec);
+	popds.setVarNames( popvnvec);
 
 	{
 		
-		int currentsize = popds3.size(); // 最長コラムの長さ
+		int currentsize = popds.size(); // 最長コラムの長さ
 
 		vector <double> scorevec = score_qayes_m;
+		mulBy( scorevec, 100.0);
 		floor( scorevec);
 		int len = scorevec.size();
 
-		popds3.addSequentialNumber( "id", ( double)currentsize, len);
-		popds3.addConstant( "gender", 1.0, len);
-		popds3.addConstant( "qaclass", 1.0, len);
-		popds3.addVector( "score", scorevec);
-		popds3.assertRecutangular();
+		popds.addSequentialNumber( "id", ( double)currentsize, len);
+		popds.addConstant( "gender", 1.0, len);
+		popds.addConstant( "qaclass", 1.0, len);
+		popds.addVector( "score", scorevec);
+		popds.assertRecutangular();
 
 	}
 
 	{
 		
-		int currentsize = popds3.size(); // 最長コラムの長さ
+		int currentsize = popds.size(); // 最長コラムの長さ
 
 		vector <double> scorevec = score_qayes_f;
+		mulBy( scorevec, 100.0);
 		floor( scorevec);
 		int len = scorevec.size();
 
-		popds3.addSequentialNumber( "id", ( double)currentsize, len);
-		popds3.addConstant( "gender", 2.0, len);
-		popds3.addConstant( "qaclass", 1.0, len);
-		popds3.addVector( "score", scorevec);
-		popds3.assertRecutangular();
+		popds.addSequentialNumber( "id", ( double)currentsize, len);
+		popds.addConstant( "gender", 2.0, len);
+		popds.addConstant( "qaclass", 1.0, len);
+		popds.addVector( "score", scorevec);
+		popds.assertRecutangular();
 
 	}
 
 	{
 		
-		int currentsize = popds3.size(); // 最長コラムの長さ
+		int currentsize = popds.size(); // 最長コラムの長さ
 
 		vector <double> scorevec = score_qano_m;
+		mulBy( scorevec, 100.0);
 		floor( scorevec);
 		int len = scorevec.size();
 
-		popds3.addSequentialNumber( "id", ( double)currentsize, len);
-		popds3.addConstant( "gender", 1.0, len);
-		popds3.addConstant( "qaclass", 0.0, len);
-		popds3.addVector( "score", scorevec);
-		popds3.assertRecutangular();
+		popds.addSequentialNumber( "id", ( double)currentsize, len);
+		popds.addConstant( "gender", 1.0, len);
+		popds.addConstant( "qaclass", 0.0, len);
+		popds.addVector( "score", scorevec);
+		popds.assertRecutangular();
 
 	}
 
 	{
 		
-		int currentsize = popds3.size(); // 最長コラムの長さ
+		int currentsize = popds.size(); // 最長コラムの長さ
 
 		vector <double> scorevec = score_qano_f;
+		mulBy( scorevec, 100.0);
 		floor( scorevec);
 		int len = scorevec.size();
 
-		popds3.addSequentialNumber( "id", ( double)currentsize, len);
-		popds3.addConstant( "gender", 2.0, len);
-		popds3.addConstant( "qaclass", 0.0, len);
-		popds3.addVector( "score", scorevec);
-		popds3.assertRecutangular();
+		popds.addSequentialNumber( "id", ( double)currentsize, len);
+		popds.addConstant( "gender", 2.0, len);
+		popds.addConstant( "qaclass", 0.0, len);
+		popds.addVector( "score", scorevec);
+		popds.assertRecutangular();
 
 	}
 
@@ -655,29 +675,29 @@ int aichi26( void)
 	// currently testing ******************************************
 	// from here:
 	tm.restart();
-	vector <double> all_vec_test = popds3.getVector( "score");
+	vector <double> all_vec_test = popds.getVector( "score");
 	vector <double> all_sq_vec_test = all_vec_test;
 	std::for_each(
 		all_sq_vec_test.begin(), all_sq_vec_test.end(),
 		[]( double v){ return v * v;}
 	);
 	vector <double> male_vec_test = 
-		popds3.getVectorIf(
+		popds.getVectorIf(
 			"score", "gender",
 			[]( double v){ return ( std::round( v) == 1.0); }
 		);
 	vector <double> female_vec_test =
-		popds3.getVectorIf(
+		popds.getVectorIf(
 			"score", "gender",
 			[]( double v){ return ( std::round( v) == 2.0); }
 		);
 	vector <double> qayes_vec_test =
-		popds3.getVectorIf(
+		popds.getVectorIf(
 			"score", "qaclass",
 			[]( double v){ return ( std::round( v) == 1.0); }
 		);
 	vector <double> qano_vec_test =
-		popds3.getVectorIf(
+		popds.getVectorIf(
 			"score", "qaclass",
 			[]( double v){ return ( std::round( v) == 0.0); }
 		);
@@ -735,6 +755,7 @@ int aichi26( void)
 
 		for ( int j = 0; j < nsim; j++){
 
+			// getSample()はkalgo.cppにある。
 			vector <MyCase> samvec = getSample( popvec, rne, nobs);
 
 			vector <double> svec; 
