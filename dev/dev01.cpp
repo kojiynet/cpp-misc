@@ -20,7 +20,8 @@
 	　Resultを入れる→OK
 	　乱数でできたデータセットそのものを格納したい→OK
 	　母集団統計量をデータセットから出す→OK
-	　サンプリングをデータセットからする　←これをやる！
+	　サンプリングをデータセットからする→OK
+	　↓これをやる！
 	　そのあと、もとのコードをうしろからコメントアウトしていって確認。
 
 
@@ -160,8 +161,23 @@ public:
 
 	SimpleDataset( void) : dcvec(){};
 //	SimpleDataset(); // using map
+	SimpleDataset( const SimpleDataset &obj0) : dcvec()
+	{
+		copyFrom( obj0);
+	}
 
 	~SimpleDataset( void){};
+
+	SimpleDataset & operator=( const SimpleDataset &obj0)
+	{
+		copyFrom( obj0);
+		return *this; 
+	}
+
+	void copyFrom( const SimpleDataset &obj0)
+	{
+		dcvec = obj0.dcvec; 
+	}
 
 	void setVarNames( const std::vector <std::string> &vec0)
 	{
@@ -413,6 +429,53 @@ public:
 
 	}
 
+	/*
+		*thisを母集団として、標本を返す。非復元抽出による。
+		*thisの要素から、ランダムに（rneを用いて）、ssizeだけの要素を選び、同じ型にして返す。
+	*/
+	SimpleDataset getSample( RandomNumberEngine &rne, int ssize)
+	{
+
+		int npop = size();
+
+		if ( ssize > npop){
+			throwMsgExcept( "sample size should not exceed population size");
+		}
+
+		std::map <int, bool> idmap;
+
+		int ndrawn = 0;
+		while ( ndrawn < ssize){
+			int randomid = rne.getDiscreteUniform( 0, npop - 1);
+			auto it = idmap.find( randomid);
+			if ( it == idmap.end()){
+				idmap[ randomid] = true;
+				ndrawn++;
+			}
+		}
+
+		SimpleDataset ret{};
+
+		for ( const auto &dc : dcvec){
+
+			SimpleDataColumn newdc{};
+			newdc.vname = dc.vname;
+			newdc.vals.resize( ssize);
+
+			auto it = idmap.begin();
+			for ( int i = 0; i < ssize; i++){
+				newdc.vals[ i] = dc.vals[ it -> first];
+				it++;
+			}
+
+			ret.dcvec.push_back( newdc);
+
+		}
+
+		return ret;
+
+	}
+
 };
 // currently testing ******************************************
 
@@ -448,6 +511,7 @@ int aichi26( void)
 	// 出力ファイル名の指定
 	std::string output_fn1 = "21a-qa-26out1.txt";
 	std::string output_fn2 = "21a-qa-26out2.txt";
+	std::string output_fn3 = "21a-qa-26out3.txt";
 
 	// サンプリング回数の指定（サンプルサイズごとに）
 	int nsim = 1; 
@@ -737,13 +801,17 @@ int aichi26( void)
 
 	
 	// currently testing ******************************************
-	SimpleDataset resultds; 
+	SimpleDataset resultds1; 
+	SimpleDataset resultds2; 
+
 	std::vector <std::string> vnvec { 
 		"nobs", "iter", "n_male", "n_female", "n_qayes", "n_qano",
 		"mean", "mean_male", "mean_female", "mean_qayes", "mean_qano",
 		"gender_diff", "qa_diff"
 	};
-	resultds.setVarNames( vnvec);
+	
+	resultds1.setVarNames( vnvec);
+	resultds2.setVarNames( vnvec);
 	// currently testing ******************************************
 
 	// サンプリングする
@@ -751,12 +819,16 @@ int aichi26( void)
 
 	std::cout << "Sampling..." << std::endl;
 
+	std::cout << " Method 1..." << std::endl;
+
+	RandomNumberEngine rne_to_sample1( 456);
+
 	for ( int nobs : nobsvec){
 
 		for ( int j = 0; j < nsim; j++){
 
 			// getSample()はkalgo.cppにある。
-			vector <MyCase> samvec = getSample( popvec, rne, nobs);
+			vector <MyCase> samvec = getSample( popvec, rne_to_sample1, nobs);
 
 			vector <double> svec; 
 			vector <double> svec_male;
@@ -788,20 +860,20 @@ int aichi26( void)
 			double mean_female = mean( svec_female);
 			double mean_qayes = mean( svec_qayes);
 			double mean_qano = mean( svec_qano);
-			resultds.addCase( "nobs", nobs);
-			resultds.addCase( "iter", j);
-			resultds.addCase( "n_male", svec_male.size());
-			resultds.addCase( "n_female", svec_female.size());
-			resultds.addCase( "n_qayes", svec_qayes.size());
-			resultds.addCase( "n_qano", svec_qano.size());
-			resultds.addCase( "mean", mean( svec));
-			resultds.addCase( "mean_male", mean( svec_male));
-			resultds.addCase( "mean_female", mean( svec_female));
-			resultds.addCase( "mean_qayes", mean( svec_qayes));
-			resultds.addCase( "mean_qano", mean( svec_qano));
-			resultds.addCase( "gender_diff", mean_male - mean_female);
-			resultds.addCase( "qa_diff", mean_qayes - mean_qano);
-			resultds.assertRecutangular();
+			resultds1.addCase( "nobs", nobs);
+			resultds1.addCase( "iter", j);
+			resultds1.addCase( "n_male", svec_male.size());
+			resultds1.addCase( "n_female", svec_female.size());
+			resultds1.addCase( "n_qayes", svec_qayes.size());
+			resultds1.addCase( "n_qano", svec_qano.size());
+			resultds1.addCase( "mean", mean( svec));
+			resultds1.addCase( "mean_male", mean( svec_male));
+			resultds1.addCase( "mean_female", mean( svec_female));
+			resultds1.addCase( "mean_qayes", mean( svec_qayes));
+			resultds1.addCase( "mean_qano", mean( svec_qano));
+			resultds1.addCase( "gender_diff", mean_male - mean_female);
+			resultds1.addCase( "qa_diff", mean_qayes - mean_qano);
+			resultds1.assertRecutangular();
 			// currently testing ******************************************
 		}
 
@@ -814,12 +886,91 @@ int aichi26( void)
 	if ( s == true){
 		
 		// currently testing ******************************************
-		resultds.writeToFile( kof);
+		resultds1.writeToFile( kof);
 		// currently testing ******************************************
 
 		kof.close();
 
 	}
+
+
+	// currently testing ******************************************
+	// from here: 
+
+	std::cout << " Method 2..." << std::endl;
+
+	RandomNumberEngine rne_to_sample2( 456);
+
+	for ( int nobs : nobsvec){
+
+		for ( int j = 0; j < nsim; j++){
+
+			SimpleDataset sampleds = popds.getSample( rne_to_sample2, nobs);
+
+			vector <double> svec = sampleds.getVector( "score");
+
+			vector <double> svec_male = 
+				sampleds.getVectorIf(
+					"score", "gender",
+					[]( double v){ return ( std::round( v) == 1.0); }
+				);
+			
+			vector <double> svec_female = 
+				sampleds.getVectorIf(
+					"score", "gender",
+					[]( double v){ return ( std::round( v) == 2.0); }
+				);
+			
+			vector <double> svec_qayes = 
+				sampleds.getVectorIf(
+					"score", "qaclass",
+					[]( double v){ return ( std::round( v) == 1.0); }
+				);
+
+			vector <double> svec_qano = 
+				sampleds.getVectorIf(
+					"score", "qaclass",
+					[]( double v){ return ( std::round( v) == 0.0); }
+				);
+
+			double mean_male   = mean( svec_male);
+			double mean_female = mean( svec_female);
+			double mean_qayes  = mean( svec_qayes);
+			double mean_qano   = mean( svec_qano);
+			resultds2.addCase( "nobs", nobs);
+			resultds2.addCase( "iter", j);
+			resultds2.addCase( "n_male",      svec_male.size());
+			resultds2.addCase( "n_female",    svec_female.size());
+			resultds2.addCase( "n_qayes",     svec_qayes.size());
+			resultds2.addCase( "n_qano",      svec_qano.size());
+			resultds2.addCase( "mean",        mean( svec));
+			resultds2.addCase( "mean_male",   mean_male);
+			resultds2.addCase( "mean_female", mean_female);
+			resultds2.addCase( "mean_qayes",  mean_qayes);
+			resultds2.addCase( "mean_qano",   mean_qano);
+			resultds2.addCase( "gender_diff", mean_male - mean_female);
+			resultds2.addCase( "qa_diff",     mean_qayes - mean_qano);
+			resultds2.assertRecutangular();
+		}
+
+	}
+
+	// 結果を書き込む
+	{
+		koutputfile kof( output_fn3);
+		bool s = kof.open( false, false, true);
+		if ( s == true){
+			
+			resultds2.writeToFile( kof);
+			kof.close();
+
+		}
+	}
+	// until here
+	// currently testing ******************************************
+
+
+
 
 	return 0;
 
