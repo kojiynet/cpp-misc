@@ -21,12 +21,18 @@
 	　乱数でできたデータセットそのものを格納したい→OK
 	　母集団統計量をデータセットから出す→OK
 	　サンプリングをデータセットからする→OK
-	　↓これをやる！
-	　そのあと、もとのコードをうしろからコメントアウトしていって確認。
+	　もとのコードをうしろからコメントアウトしていって確認→OK
 
-
-
+	　↓これを検討していく。
+	　getBetaRandomVec()で範囲指定する引数をつくりたい。
+	　getBetaRandomVec()で時間がかかっている間、別スレッドで"."を表示していきたい気がする。
+	　　できれば、現状で何ケースまで抽出できたかの数を共有して、何%進捗しているかを。。
+	　getVectorIf()の、mapで渡してv["gender"]とかで引用できるバージョンを書きたい。
+	　さらに、getCaseValue()などとして、同様にmapから値を見ながら、return {true, v["score"]}みたいな返し方をさせたい。getIndexColumn()を参考に。
+	　koutputfileのインスタンスをostreamとして扱えるようにしたい。
 	　	
+
+
 	　以下を目指すのだがまずdoubleのみで。途中。
 
 	　変数名と対応させつつVectorを持っている、というような。そしてVectorとしてintかdoubleかstringのどれもあり、というような。
@@ -429,10 +435,9 @@ public:
 
 	}
 
-	/*
-		*thisを母集団として、標本を返す。非復元抽出による。
-		*thisの要素から、ランダムに（rneを用いて）、ssizeだけの要素を選び、同じ型にして返す。
-	*/
+	// *thisを母集団として、標本を返す。非復元抽出による。
+	// *thisの要素から、ランダムに（rneを用いて）、ssizeだけの要素を選び、同じ型にして返す。
+	// kalgo.cppにあるgetSample()と同様のアルゴリズムで実装されている。
 	SimpleDataset getSample( RandomNumberEngine &rne, int ssize)
 	{
 
@@ -511,7 +516,6 @@ int aichi26( void)
 	// 出力ファイル名の指定
 	std::string output_fn1 = "21a-qa-26out1.txt";
 	std::string output_fn2 = "21a-qa-26out2.txt";
-	std::string output_fn3 = "21a-qa-26out3.txt";
 
 	// サンプリング回数の指定（サンプルサイズごとに）
 	int nsim = 1; 
@@ -519,11 +523,10 @@ int aichi26( void)
 	// サンプリング時のサンプルサイズの指定
 	std::vector <int> nobsvec;
 	nobsvec.resize( 998);
-	for ( int i = 0; i < 998; i++){
-		nobsvec[ i] = i + 3;
-	}
+	std::iota( nobsvec.begin(), nobsvec.end(), 3);
 
-	// Generating Beta Distribution 
+
+	// 母集団の生成。Generating Beta Distribution 
 
 	RandomNumberEngine rne( 123); 
 
@@ -549,57 +552,11 @@ int aichi26( void)
 	sigma = 10.0 / 100.0;
 	getBetaRandomVec( score_qano_m, rne, 250'000, mu, sigma * sigma);
 	getBetaRandomVec( score_qano_f, rne, 250'000, mu, sigma * sigma);
+
 	
-	// データをケースのvectorにつめる
+	// 母集団データをSimpleDatasetにつめる
+
 	Timer tm;
-	vector <MyCase> popvec; 
-	int i = 0;
-	for ( auto v : score_qayes_m){
-		MyCase c;
-		c.id = i;
-		i++;
-		c.gender = 1; 
-		c.qaclass = 1;
-		c.score = floor( v * 100.0);
-		c.name = "";
-		popvec.push_back( c);
-	}
-	for ( auto v : score_qayes_f){
-		MyCase c;
-		c.id = i;
-		i++;
-		c.gender = 2; 
-		c.qaclass = 1;
-		c.score = floor( v * 100.0);
-		c.name = "";
-		popvec.push_back( c);
-	}
-	for ( auto v : score_qano_m){
-		MyCase c;
-		c.id = i;
-		i++;
-		c.gender = 1; 
-		c.qaclass = 0;
-		c.score = floor( v * 100.0);
-		c.name = ""; 
-		popvec.push_back( c);
-	}
-	for ( auto v : score_qano_f){
-		MyCase c;
-		c.id = i;
-		i++;
-		c.gender = 2; 
-		c.qaclass = 0;
-		c.score = floor( v * 100.0);
-		c.name = ""; 
-		popvec.push_back( c);
-	}
-	tm.markEnd();
-	cout << "Duration for Storing 1: " << tm.getInterval() << " millisecond" << endl;
-
-	// currently testing ******************************************
-	// from here 
-
 	tm.restart();
 
 	SimpleDataset popds; 
@@ -679,233 +636,83 @@ int aichi26( void)
 	}
 
 	tm.markEnd();
-	cout << "Duration for Storing 2: " << tm.getInterval() << " millisecond" << endl;
-
-	// currently testing ******************************************
+	cout << "Duration for Storing: " << tm.getInterval() << " millisecond" << endl;
 
 
+	// 母集団統計量
 
 	tm.restart();
 
-	// 母集団統計量
-	vector <double> all_vec;
-	vector <double> all_sq_vec;
-	vector <double> male_vec;
-	vector <double> female_vec;
-	vector <double> qayes_vec;
-	vector <double> qano_vec;
-	for ( auto c : popvec){
-		all_vec.push_back( c.score);
-		all_sq_vec.push_back( c.score * c.score);
-		if ( c.gender == 1){
-			male_vec.push_back( c.score);
-		} else {
-			female_vec.push_back( c.score);
-		}
-		if ( c.qaclass == 1){
-			qayes_vec.push_back( c.score);
-		} else {
-			qano_vec.push_back( c.score);
-		}
-	}
+	vector <double> all_vec = popds.getVector( "score");
+	vector <double> male_vec = 
+		popds.getVectorIf(
+			"score", "gender",
+			[]( double gender){ return ( std::round( gender) == 1.0); }
+		);
+	vector <double> female_vec =
+		popds.getVectorIf(
+			"score", "gender",
+			[]( double gender){ return ( std::round( gender) == 2.0); }
+		);
+	vector <double> qayes_vec =
+		popds.getVectorIf(
+			"score", "qaclass",
+			[]( double qaclass){ return ( std::round( qaclass) == 1.0); }
+		);
+	vector <double> qano_vec =
+		popds.getVectorIf(
+			"score", "qaclass",
+			[]( double qaclass){ return ( std::round( qaclass) == 0.0); }
+		);
 	
 	{
 		koutputfile kof( output_fn1);
 		bool b = kof.open( false, false, true);
 		if ( b == true){
 			stringstream ss;
-			ss << "mean" "\t" << mean( all_vec) << endl
-			   << "mean male" "\t" << mean( male_vec) << endl
-			   << "mean female" "\t" << mean( female_vec) << endl
-			   << "mean qayes" "\t" << mean( qayes_vec) << endl
-			   << "mean qano" "\t" << mean( qano_vec) << endl
-			   << "var(all)" "\t" << unbiasedVarBoost( all_vec) << endl
-			   << "var(male)" "\t" << unbiasedVarBoost( male_vec) << endl
-			   << "var(female)" "\t" << unbiasedVarBoost( female_vec) << endl
-			   << "var(qayes)" "\t" << unbiasedVarBoost( qayes_vec) << endl
-			   << "var(qano)" "\t" << unbiasedVarBoost( qano_vec) << endl
-			   << "N" "\t" << all_vec.size() << endl
-			   << "N male" "\t" << male_vec.size() << endl
-			   << "N female" "\t" << female_vec.size() << endl
-			   << "N qayes" "\t" << qayes_vec.size() << endl
-			   << "N qano" "\t" << qano_vec.size() << endl;
+			ss << "mean"		"\t" << mean( all_vec) << endl
+			   << "mean male"	"\t" << mean( male_vec) << endl
+			   << "mean female"	"\t" << mean( female_vec) << endl
+			   << "mean qayes"	"\t" << mean( qayes_vec) << endl
+			   << "mean qano"	"\t" << mean( qano_vec) << endl
+			   << "var(all)"	"\t" << unbiasedVarBoost( all_vec) << endl
+			   << "var(male)"	"\t" << unbiasedVarBoost( male_vec) << endl
+			   << "var(female)"	"\t" << unbiasedVarBoost( female_vec) << endl
+			   << "var(qayes)"	"\t" << unbiasedVarBoost( qayes_vec) << endl
+			   << "var(qano)"	"\t" << unbiasedVarBoost( qano_vec) << endl
+			   << "N"			"\t" << all_vec.size() << endl
+			   << "N male"		"\t" << male_vec.size() << endl
+			   << "N female"	"\t" << female_vec.size() << endl
+			   << "N qayes"		"\t" << qayes_vec.size() << endl
+			   << "N qano"		"\t" << qano_vec.size() << endl;
 			kof.writeLine( ss.str());
 		}
 	}
-	
+
 	tm.markEnd();
-	cout << "Duration for calculating pop stats 1: " << tm.getInterval() << " millisecond" << endl;
-
-	// currently testing ******************************************
-	// from here:
-	tm.restart();
-	vector <double> all_vec_test = popds.getVector( "score");
-	vector <double> all_sq_vec_test = all_vec_test;
-	std::for_each(
-		all_sq_vec_test.begin(), all_sq_vec_test.end(),
-		[]( double v){ return v * v;}
-	);
-	vector <double> male_vec_test = 
-		popds.getVectorIf(
-			"score", "gender",
-			[]( double v){ return ( std::round( v) == 1.0); }
-		);
-	vector <double> female_vec_test =
-		popds.getVectorIf(
-			"score", "gender",
-			[]( double v){ return ( std::round( v) == 2.0); }
-		);
-	vector <double> qayes_vec_test =
-		popds.getVectorIf(
-			"score", "qaclass",
-			[]( double v){ return ( std::round( v) == 1.0); }
-		);
-	vector <double> qano_vec_test =
-		popds.getVectorIf(
-			"score", "qaclass",
-			[]( double v){ return ( std::round( v) == 0.0); }
-		);
+	cout << "Duration for calculating pop stats: " << tm.getInterval() << " millisecond" << endl;
 	
-	{
-		koutputfile kof( output_fn1);
-		bool b = kof.open( true, false, false); // append mode 
-		if ( b == true){
-			kof.writeLine( "");
-			kof.writeLine( "***** currently testing *****");
-			stringstream ss;
-			ss << "mean" "\t" << mean( all_vec_test) << endl
-			   << "mean male" "\t" << mean( male_vec_test) << endl
-			   << "mean female" "\t" << mean( female_vec_test) << endl
-			   << "mean qayes" "\t" << mean( qayes_vec_test) << endl
-			   << "mean qano" "\t" << mean( qano_vec_test) << endl
-			   << "var(all)" "\t" << unbiasedVarBoost( all_vec_test) << endl
-			   << "var(male)" "\t" << unbiasedVarBoost( male_vec_test) << endl
-			   << "var(female)" "\t" << unbiasedVarBoost( female_vec_test) << endl
-			   << "var(qayes)" "\t" << unbiasedVarBoost( qayes_vec_test) << endl
-			   << "var(qano)" "\t" << unbiasedVarBoost( qano_vec_test) << endl
-			   << "N" "\t" << all_vec_test.size() << endl
-			   << "N male" "\t" << male_vec_test.size() << endl
-			   << "N female" "\t" << female_vec_test.size() << endl
-			   << "N qayes" "\t" << qayes_vec_test.size() << endl
-			   << "N qano" "\t" << qano_vec_test.size() << endl;
-			kof.writeLine( ss.str());
-		}
-	}
-	tm.markEnd();
-	cout << "Duration for calculating pop stats 2: " << tm.getInterval() << " millisecond" << endl;
-	// currently testing ******************************************
-	
-
-
-
-
-	
-	// currently testing ******************************************
-	SimpleDataset resultds1; 
-	SimpleDataset resultds2; 
-
-	std::vector <std::string> vnvec { 
-		"nobs", "iter", "n_male", "n_female", "n_qayes", "n_qano",
-		"mean", "mean_male", "mean_female", "mean_qayes", "mean_qano",
-		"gender_diff", "qa_diff"
-	};
-	
-	resultds1.setVarNames( vnvec);
-	resultds2.setVarNames( vnvec);
-	// currently testing ******************************************
 
 	// サンプリングする
 	// そのたびに統計量を算出して記録
 
+	SimpleDataset resultds; 
+	std::vector <std::string> vnvec { 
+		"nobs", "iter", "n_male", "n_female", "n_qayes", "n_qano",
+		"mean", "mean_male", "mean_female", "mean_qayes", "mean_qano",
+		"gender_diff", "qa_diff"
+	};	
+	resultds.setVarNames( vnvec);
+
 	std::cout << "Sampling..." << std::endl;
 
-	std::cout << " Method 1..." << std::endl;
-
-	RandomNumberEngine rne_to_sample1( 456);
+	RandomNumberEngine rne_to_sample( 456);
 
 	for ( int nobs : nobsvec){
 
 		for ( int j = 0; j < nsim; j++){
 
-			// getSample()はkalgo.cppにある。
-			vector <MyCase> samvec = getSample( popvec, rne_to_sample1, nobs);
-
-			vector <double> svec; 
-			vector <double> svec_male;
-			vector <double> svec_female;
-			vector <double> svec_qayes;
-			vector <double> svec_qano;
-
-			for ( const auto &c : samvec){
-
-				svec.push_back( c.score);
-
-				if ( c.gender == 1){
-					svec_male.push_back( c.score);
-				} else {
-					svec_female.push_back( c.score);
-				}
-
-				if ( c.qaclass == 1){
-					svec_qayes.push_back( c.score);
-				} else {
-					svec_qano.push_back( c.score);
-				}
-
-
-			}
-
-			// currently testing ******************************************
-			double mean_male = mean( svec_male);
-			double mean_female = mean( svec_female);
-			double mean_qayes = mean( svec_qayes);
-			double mean_qano = mean( svec_qano);
-			resultds1.addCase( "nobs", nobs);
-			resultds1.addCase( "iter", j);
-			resultds1.addCase( "n_male", svec_male.size());
-			resultds1.addCase( "n_female", svec_female.size());
-			resultds1.addCase( "n_qayes", svec_qayes.size());
-			resultds1.addCase( "n_qano", svec_qano.size());
-			resultds1.addCase( "mean", mean( svec));
-			resultds1.addCase( "mean_male", mean( svec_male));
-			resultds1.addCase( "mean_female", mean( svec_female));
-			resultds1.addCase( "mean_qayes", mean( svec_qayes));
-			resultds1.addCase( "mean_qano", mean( svec_qano));
-			resultds1.addCase( "gender_diff", mean_male - mean_female);
-			resultds1.addCase( "qa_diff", mean_qayes - mean_qano);
-			resultds1.assertRecutangular();
-			// currently testing ******************************************
-		}
-
-	}
-
-	// 結果を書き込む
-
-	koutputfile kof( output_fn2);
-	bool s = kof.open( false, false, true);
-	if ( s == true){
-		
-		// currently testing ******************************************
-		resultds1.writeToFile( kof);
-		// currently testing ******************************************
-
-		kof.close();
-
-	}
-
-
-	// currently testing ******************************************
-	// from here: 
-
-	std::cout << " Method 2..." << std::endl;
-
-	RandomNumberEngine rne_to_sample2( 456);
-
-	for ( int nobs : nobsvec){
-
-		for ( int j = 0; j < nsim; j++){
-
-			SimpleDataset sampleds = popds.getSample( rne_to_sample2, nobs);
+			SimpleDataset sampleds = popds.getSample( rne_to_sample, nobs);
 
 			vector <double> svec = sampleds.getVector( "score");
 
@@ -937,40 +744,35 @@ int aichi26( void)
 			double mean_female = mean( svec_female);
 			double mean_qayes  = mean( svec_qayes);
 			double mean_qano   = mean( svec_qano);
-			resultds2.addCase( "nobs", nobs);
-			resultds2.addCase( "iter", j);
-			resultds2.addCase( "n_male",      svec_male.size());
-			resultds2.addCase( "n_female",    svec_female.size());
-			resultds2.addCase( "n_qayes",     svec_qayes.size());
-			resultds2.addCase( "n_qano",      svec_qano.size());
-			resultds2.addCase( "mean",        mean( svec));
-			resultds2.addCase( "mean_male",   mean_male);
-			resultds2.addCase( "mean_female", mean_female);
-			resultds2.addCase( "mean_qayes",  mean_qayes);
-			resultds2.addCase( "mean_qano",   mean_qano);
-			resultds2.addCase( "gender_diff", mean_male - mean_female);
-			resultds2.addCase( "qa_diff",     mean_qayes - mean_qano);
-			resultds2.assertRecutangular();
+			resultds.addCase( "nobs", nobs);
+			resultds.addCase( "iter", j);
+			resultds.addCase( "n_male",      svec_male.size());
+			resultds.addCase( "n_female",    svec_female.size());
+			resultds.addCase( "n_qayes",     svec_qayes.size());
+			resultds.addCase( "n_qano",      svec_qano.size());
+			resultds.addCase( "mean",        mean( svec));
+			resultds.addCase( "mean_male",   mean_male);
+			resultds.addCase( "mean_female", mean_female);
+			resultds.addCase( "mean_qayes",  mean_qayes);
+			resultds.addCase( "mean_qano",   mean_qano);
+			resultds.addCase( "gender_diff", mean_male - mean_female);
+			resultds.addCase( "qa_diff",     mean_qayes - mean_qano);
+			resultds.assertRecutangular();
 		}
 
 	}
 
 	// 結果を書き込む
 	{
-		koutputfile kof( output_fn3);
+		koutputfile kof( output_fn2);
 		bool s = kof.open( false, false, true);
 		if ( s == true){
 			
-			resultds2.writeToFile( kof);
+			resultds.writeToFile( kof);
 			kof.close();
 
 		}
 	}
-	// until here
-	// currently testing ******************************************
-
-
-
 
 	return 0;
 
