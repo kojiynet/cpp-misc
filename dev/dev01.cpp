@@ -23,10 +23,14 @@
 	　サンプリングをデータセットからする→OK
 	　もとのコードをうしろからコメントアウトしていって確認→OK
 
-	　↓これを検討していく。
-	　getBetaRandomVec()で範囲指定する引数をつくりたい。
+	　↓これを修正中。
+	　std::vector <double> RandomNumberEngine :: getDistRandomVec( int n, std::function <double( double)> quantile, std::function <void( int, int)> observer)
+	　　observerにnとiを与えて報告させる。たぶん何ミリ秒ごとに呼ぶかの引数も要る？
+	　　getDistRandomVec()内でラムダ式で実際にスレッドになる関数をつくり、その際に参照キャプチャしておいて、observerを呼ぶときに渡す。あとはsleep。
 	　getBetaRandomVec()で時間がかかっている間、別スレッドで"."を表示していきたい気がする。
 	　　できれば、現状で何ケースまで抽出できたかの数を共有して、何%進捗しているかを。。
+	　…
+	　getBetaRandomVec()で範囲指定する引数をつくりたい。
 	　getVectorIf()の、mapで渡してv["gender"]とかで引用できるバージョンを書きたい。
 	　さらに、getCaseValue()などとして、同様にmapから値を見ながら、return {true, v["score"]}みたいな返し方をさせたい。getIndexColumn()を参考に。
 	　koutputfileのインスタンスをostreamとして扱えるようにしたい。
@@ -59,10 +63,10 @@
 #include <cmath>
 #include <execution>
 #include <boost/math/distributions/beta.hpp>
-#include <k09/krand01.cpp>
+#include <k09/krand02.cpp>
 #include <k09/kdataset03.cpp>
 #include <k09/kstat02.cpp>
-#include <k09/kstatboost01.cpp>
+#include <k09/kstatboost02.cpp>
 #include <k09/koutputfile00.cpp>
 #include <k09/kalgo02.cpp>
 #include <k09/kexcept00.cpp>
