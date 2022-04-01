@@ -23,13 +23,7 @@
 	　サンプリングをデータセットからする→OK
 	　もとのコードをうしろからコメントアウトしていって確認→OK
 
-	　↓これを修正中。
-	　std::vector <double> RandomNumberEngine :: getDistRandomVec( int n, std::function <double( double)> quantile, std::function <void( int, int)> observer)
-	　　observerにnとiを与えて報告させる。たぶん何ミリ秒ごとに呼ぶかの引数も要る？
-	　　getDistRandomVec()内でラムダ式で実際にスレッドになる関数をつくり、その際に参照キャプチャしておいて、observerを呼ぶときに渡す。あとはsleep。
-	　getBetaRandomVec()で時間がかかっている間、別スレッドで"."を表示していきたい気がする。
-	　　できれば、現状で何ケースまで抽出できたかの数を共有して、何%進捗しているかを。。
-	　…
+	　↓これを修正する。
 	　getBetaRandomVec()で範囲指定する引数をつくりたい。
 	　getVectorIf()の、mapで渡してv["gender"]とかで引用できるバージョンを書きたい。
 	　さらに、getCaseValue()などとして、同様にmapから値を見ながら、return {true, v["score"]}みたいな返し方をさせたい。getIndexColumn()を参考に。
@@ -545,17 +539,15 @@ int aichi26( void)
 	sigma = 10.0 / 100.0;
 	// ↑ここで100で割らねばならないのは、getBetaRandomVec()が[0,1]しか返さないから、か。
 	// 　ならば、getBetaRandomVec()で範囲指定する引数をつくりたい。
-	// ↓この中で時間がかかっている間、別スレッドで"."を表示していきたい気がする。
-	// できれば、現状で何ケースまで抽出できたかの数を共有して、何%進捗しているかを。。
-	getBetaRandomVec( score_qayes_m, rne, 250'000, mu, sigma * sigma);
-	getBetaRandomVec( score_qayes_f, rne, 250'000, mu, sigma * sigma);
+	getBetaRandomVec( score_qayes_m, rne, 250'000, mu, sigma * sigma, true);
+	getBetaRandomVec( score_qayes_f, rne, 250'000, mu, sigma * sigma, true);
 
 	vector <double> score_qano_m;
 	vector <double> score_qano_f;
 	mu = 60.0 / 100.0;
 	sigma = 10.0 / 100.0;
-	getBetaRandomVec( score_qano_m, rne, 250'000, mu, sigma * sigma);
-	getBetaRandomVec( score_qano_f, rne, 250'000, mu, sigma * sigma);
+	getBetaRandomVec( score_qano_m, rne, 250'000, mu, sigma * sigma, true);
+	getBetaRandomVec( score_qano_f, rne, 250'000, mu, sigma * sigma, true);
 
 	
 	// 母集団データをSimpleDatasetにつめる
