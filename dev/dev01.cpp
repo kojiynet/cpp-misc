@@ -24,7 +24,6 @@
 	　もとのコードをうしろからコメントアウトしていって確認→OK
 
 	　↓これを修正する。
-	　getBetaRandomVec()で範囲指定する引数をつくりたい。
 	　getVectorIf()の、mapで渡してv["gender"]とかで引用できるバージョンを書きたい。
 	　さらに、getCaseValue()などとして、同様にmapから値を見ながら、return {true, v["score"]}みたいな返し方をさせたい。getIndexColumn()を参考に。
 	　koutputfileのインスタンスをostreamとして扱えるようにしたい。
@@ -537,17 +536,25 @@ int aichi26( void)
 	vector <double> score_qayes_f;
 	mu = 70.0 / 100.0;
 	sigma = 10.0 / 100.0;
-	// ↑ここで100で割らねばならないのは、getBetaRandomVec()が[0,1]しか返さないから、か。
-	// 　ならば、getBetaRandomVec()で範囲指定する引数をつくりたい。
+	// ↑ここで100で割るのは、本来Betaは[0,1]だから。
+	// 　なので下では戻す計算をする。
 	getBetaRandomVec( score_qayes_m, rne, 250'000, mu, sigma * sigma, true);
+	mulBy( score_qayes_m, 100.0);
+	floor( score_qayes_m);
 	getBetaRandomVec( score_qayes_f, rne, 250'000, mu, sigma * sigma, true);
+	mulBy( score_qayes_f, 100.0);
+	floor( score_qayes_f);
 
 	vector <double> score_qano_m;
 	vector <double> score_qano_f;
 	mu = 60.0 / 100.0;
 	sigma = 10.0 / 100.0;
 	getBetaRandomVec( score_qano_m, rne, 250'000, mu, sigma * sigma, true);
+	mulBy( score_qano_m, 100.0);
+	floor( score_qano_m);
 	getBetaRandomVec( score_qano_f, rne, 250'000, mu, sigma * sigma, true);
+	mulBy( score_qano_f, 100.0);
+	floor( score_qano_f);
 
 	
 	// 母集団データをSimpleDatasetにつめる
@@ -568,8 +575,8 @@ int aichi26( void)
 		int currentsize = popds.size(); // 最長コラムの長さ
 
 		vector <double> scorevec = score_qayes_m;
-		mulBy( scorevec, 100.0);
-		floor( scorevec);
+//		mulBy( scorevec, 100.0);
+//		floor( scorevec);
 		int len = scorevec.size();
 
 		popds.addSequentialNumber( "id", ( double)currentsize, len);
@@ -585,8 +592,8 @@ int aichi26( void)
 		int currentsize = popds.size(); // 最長コラムの長さ
 
 		vector <double> scorevec = score_qayes_f;
-		mulBy( scorevec, 100.0);
-		floor( scorevec);
+//		mulBy( scorevec, 100.0);
+//		floor( scorevec);
 		int len = scorevec.size();
 
 		popds.addSequentialNumber( "id", ( double)currentsize, len);
@@ -602,8 +609,8 @@ int aichi26( void)
 		int currentsize = popds.size(); // 最長コラムの長さ
 
 		vector <double> scorevec = score_qano_m;
-		mulBy( scorevec, 100.0);
-		floor( scorevec);
+//		mulBy( scorevec, 100.0);
+//		floor( scorevec);
 		int len = scorevec.size();
 
 		popds.addSequentialNumber( "id", ( double)currentsize, len);
@@ -619,8 +626,8 @@ int aichi26( void)
 		int currentsize = popds.size(); // 最長コラムの長さ
 
 		vector <double> scorevec = score_qano_f;
-		mulBy( scorevec, 100.0);
-		floor( scorevec);
+//		mulBy( scorevec, 100.0);
+//		floor( scorevec);
 		int len = scorevec.size();
 
 		popds.addSequentialNumber( "id", ( double)currentsize, len);
