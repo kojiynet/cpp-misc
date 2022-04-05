@@ -25,22 +25,10 @@
 
 	　↓これを修正する。
 	　getVectorIf()の、mapで渡してv["gender"]とかで引用できるバージョンを書きたい。
+	　　↑ラムダ式でmap::at()を使わないと変数名を間違えたときにエラーになってくれないので、困る。
+	　　→casemapクラスを書く？
 	　さらに、getCaseValue()などとして、同様にmapから値を見ながら、return {true, v["score"]}みたいな返し方をさせたい。getIndexColumn()を参考に。
 	　koutputfileのインスタンスをostreamとして扱えるようにしたい。
-	　	
-
-
-	　以下を目指すのだがまずdoubleのみで。途中。
-
-	　変数名と対応させつつVectorを持っている、というような。そしてVectorとしてintかdoubleかstringのどれもあり、というような。
-	　方針：
-	　　SimpleDataColumnクラスをつくる。
-	　　中にdoubleとstringのvectorを持っている。（C++17ならvariantで）
-	　　中身をdoubleで得たり（stringコラムだとNaN）、stringで得たり（stringstream）できるように。
-	　　　doubleの場合の桁数を指定するのはあとで。。
-	　　それからの、SimpleDatasetで整形しながらostreamに出す、か、koutputfileに渡してファイルに出力。
-	　　
-	
 
 */
 
@@ -106,6 +94,7 @@ void mulBy( std::vector <double> &vec0, double d0)
 
 /* ********** Class Definitions ********** */
 
+/*
 class MyCase {
 public:
 
@@ -120,6 +109,8 @@ public:
 	}
 
 };
+*/
+
 
 // currently testing ******************************************
 // using only doubles as far 
@@ -163,7 +154,6 @@ public:
 	/* ***** Methods ***** */
 
 	SimpleDataset( void) : dcvec(){};
-//	SimpleDataset(); // using map
 	SimpleDataset( const SimpleDataset &obj0) : dcvec()
 	{
 		copyFrom( obj0);
@@ -190,8 +180,6 @@ public:
 			dcvec[ i].vname = vec0[ i];
 		}
 	}
-
-//	void setVarNames( const std::string &); // to be tokenized 
 
 	// add only a value for one-case one-variable 
 	// throws exception if the variable does not exist 
@@ -323,6 +311,58 @@ public:
 		return ret;
 		
 	}
+
+	// returns the vector of the variable named "vn0", only for the cases where 
+	// the certain condition given by "func0" is satifcied
+	// "func0" will return bool taking as input the map
+	// which includes varnames and values
+	// throws exception if the variable to use does not exist 
+	std::vector <double>
+	getVectorIf( 
+		const std::string &vn0,
+		std::function < bool( std::map <std::string, double> ) > func0
+	)
+	{
+
+		auto [ b, idx] = getColumnIndex( vn0);
+		if ( b == false){
+			throwMsgExcept( "", "variable not found: " + vn0);
+		}
+
+		const auto &vals_to_return = dcvec[ idx].vals; // vector <double> & 
+
+		int len = vals_to_return.size();
+
+		std::vector <double> ret;
+
+		std::map <std::string, double> casemap;
+		for ( const auto &vec : dcvec){
+			casemap.insert( std::make_pair( vec.vname, 0.0));
+		}
+
+		try {
+
+			for ( int i = 0; i < len; i++){
+
+				for ( const auto &vec : dcvec){
+					casemap.at( vec.vname) = vec.vals[ i];
+				}
+
+				if ( func0( casemap) == true){
+					ret.push_back( vals_to_return[ i]);
+				}
+
+			}
+
+		} catch ( const std::out_of_range &e) {
+
+			throwMsgExcept( "", "variable used in condition func was not found");
+
+		}
+
+		return ret;
+		
+	}	
 
 	// returns:
 	//   bool: true if the variable exists
@@ -495,9 +535,17 @@ int main( int argc, char *argv[])
 {
 
 	int ret = 0;
-	
-	if ( ret == 0){
-		ret = aichi26();
+
+	try {
+
+		if ( ret == 0){
+			ret = aichi26();
+		}
+
+	} catch ( const std::exception &e){
+
+		cout << e.what() << endl;
+
 	}
 
 	return ret; 
@@ -563,10 +611,8 @@ int aichi26( void)
 	tm.restart();
 
 	SimpleDataset popds; 
-	// 現状ではnameは使えない。
 	std::vector <std::string> popvnvec { 
 		"id", "gender", "qaclass", "score"
-		// , "name" 
 	};
 	popds.setVarNames( popvnvec);
 
@@ -575,8 +621,6 @@ int aichi26( void)
 		int currentsize = popds.size(); // 最長コラムの長さ
 
 		vector <double> scorevec = score_qayes_m;
-//		mulBy( scorevec, 100.0);
-//		floor( scorevec);
 		int len = scorevec.size();
 
 		popds.addSequentialNumber( "id", ( double)currentsize, len);
@@ -592,8 +636,6 @@ int aichi26( void)
 		int currentsize = popds.size(); // 最長コラムの長さ
 
 		vector <double> scorevec = score_qayes_f;
-//		mulBy( scorevec, 100.0);
-//		floor( scorevec);
 		int len = scorevec.size();
 
 		popds.addSequentialNumber( "id", ( double)currentsize, len);
@@ -609,8 +651,6 @@ int aichi26( void)
 		int currentsize = popds.size(); // 最長コラムの長さ
 
 		vector <double> scorevec = score_qano_m;
-//		mulBy( scorevec, 100.0);
-//		floor( scorevec);
 		int len = scorevec.size();
 
 		popds.addSequentialNumber( "id", ( double)currentsize, len);
@@ -626,8 +666,6 @@ int aichi26( void)
 		int currentsize = popds.size(); // 最長コラムの長さ
 
 		vector <double> scorevec = score_qano_f;
-//		mulBy( scorevec, 100.0);
-//		floor( scorevec);
 		int len = scorevec.size();
 
 		popds.addSequentialNumber( "id", ( double)currentsize, len);
@@ -647,11 +685,14 @@ int aichi26( void)
 	tm.restart();
 
 	vector <double> all_vec = popds.getVector( "score");
+
+	// ↓この中のラムダ式でmap::at()を使わないと変数名を間違えたときにエラーになってくれないので、困る。
 	vector <double> male_vec = 
 		popds.getVectorIf(
-			"score", "gender",
-			[]( double gender){ return ( std::round( gender) == 1.0); }
+			"score",
+			[]( std::map <std::string, double> v){ return ( std::round( v.at( "gender")) == 1.0); }
 		);
+
 	vector <double> female_vec =
 		popds.getVectorIf(
 			"score", "gender",
