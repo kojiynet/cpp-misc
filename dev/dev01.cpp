@@ -22,12 +22,8 @@
 	　母集団統計量をデータセットから出す→OK
 	　サンプリングをデータセットからする→OK
 	　もとのコードをうしろからコメントアウトしていって確認→OK
-
-	　↓これを修正する。
-	　getVectorIf()の、mapで渡してv["gender"]とかで引用できるバージョンを書きたい。
-	　　↑ラムダ式でmap::at()を使わないと変数名を間違えたときにエラーになってくれないので、困る。
-	　　→casemapクラスを書く？
-	　さらに、getCaseValue()などとして、同様にmapから値を見ながら、return {true, v["score"]}みたいな返し方をさせたい。getIndexColumn()を参考に。
+	　getVectorIf()の別バージョン→書いた
+	
 	　koutputfileのインスタンスをostreamとして扱えるようにしたい。
 
 */
@@ -94,26 +90,6 @@ void mulBy( std::vector <double> &vec0, double d0)
 
 /* ********** Class Definitions ********** */
 
-/*
-class MyCase {
-public:
-
-	int id;
-	int gender;
-	std::string name;
-	double score;
-	int qaclass; 
-
-	void print( void){
-		std::cout << id << " " << gender << " " << qaclass << " " << score << " " << name << std::endl;	
-	}
-
-};
-*/
-
-
-// currently testing ******************************************
-// using only doubles as far 
 class SimpleDataset {
 
 public:
@@ -317,6 +293,9 @@ public:
 	// "func0" will return bool taking as input the map
 	// which includes varnames and values
 	// throws exception if the variable to use does not exist 
+	// 
+	// inside "func0" we should use map::at() to throw exception for erroneous varname
+	// very slow because for each case one map object will be created
 	std::vector <double>
 	getVectorIf( 
 		const std::string &vn0,
@@ -334,6 +313,7 @@ public:
 		int len = vals_to_return.size();
 
 		std::vector <double> ret;
+		ret.reserve( len);
 
 		std::map <std::string, double> casemap;
 		for ( const auto &vec : dcvec){
@@ -363,6 +343,64 @@ public:
 		return ret;
 		
 	}	
+
+	// returns the vector of the variable named "vn0", only for the cases 
+	// where the certain condition given by "func0" is satifcied
+	// "func0" will return bool taking as input varname->double func object
+	// throws exception if the variable to use does not exist 
+	std::vector <double>
+	getVectorIf( 
+		const std::string &vn0,
+		std::function < bool( std::function <double(std::string)> ) > func0
+	)
+	{
+
+		auto [ b, idx] = getColumnIndex( vn0);
+		if ( b == false){
+			throwMsgExcept( "", "variable not found: " + vn0);
+		}
+
+		const auto &vals_to_return = dcvec[ idx].vals; // vector <double> & 
+
+		int len = vals_to_return.size();
+
+		std::vector <double> ret;
+		ret.reserve( len);
+
+		for ( int i = 0; i < len; i++){
+
+			std::function < double( std::string) > casevaluefunc =
+				[&]( std::string vn0)->double
+				{
+					return value( vn0, i);
+				};
+			
+			if ( func0( casevaluefunc) == true){
+				ret.push_back( vals_to_return[ i]);
+			}
+
+		}
+
+		return ret;
+
+	}
+
+	// accessor
+	double & value( const std::string &vn0, int caseid0)
+	{
+
+		auto [b, idx] = getColumnIndex( vn0);
+		if ( b == false){
+			throwMsgExcept( "", "variable not found");
+		}
+		auto &alias = dcvec[ idx].vals;
+		if ( caseid0 < 0 || caseid0 >= alias.size()){
+			throwMsgExcept( "", "case id out of bound");
+		}
+		
+		return alias[ caseid0];
+
+	} 
 
 	// returns:
 	//   bool: true if the variable exists
@@ -408,8 +446,6 @@ public:
 			throwMsgExcept( "", "dataset is not rectangular");
 		}
 	}
-
-//	void writeToStream( std::ostream &);
 
 	void writeToFile( koutputfile &kof0, const std::string &sep0 = "\t")
 	{
@@ -519,11 +555,9 @@ public:
 	}
 
 };
-// currently testing ******************************************
 
 
 /* ********** Global Variables ********** */
-
 
 
 /* ********** Definitions of Static Member Variables ********** */
@@ -679,36 +713,50 @@ int aichi26( void)
 	tm.markEnd();
 	cout << "Duration for Storing: " << tm.getInterval() << " millisecond" << endl;
 
-
 	// 母集団統計量
 
 	tm.restart();
 
 	vector <double> all_vec = popds.getVector( "score");
-
-	// ↓この中のラムダ式でmap::at()を使わないと変数名を間違えたときにエラーになってくれないので、困る。
+	
+	tm.restart();
 	vector <double> male_vec = 
 		popds.getVectorIf(
 			"score",
 			[]( std::map <std::string, double> v){ return ( std::round( v.at( "gender")) == 1.0); }
 		);
-
+	tm.markEnd();
+	cout << "Duration 1: " << tm.getInterval() << " millisecond" << endl;
+	
+	tm.restart();
 	vector <double> female_vec =
 		popds.getVectorIf(
-			"score", "gender",
-			[]( double gender){ return ( std::round( gender) == 2.0); }
+			"score", 
+			[]( std::function <double(std::string)> v){ return ( std::round( v( "gender")) == 2.0); }
 		);
-	vector <double> qayes_vec =
+	tm.markEnd();
+	cout << "Duration 2: " << tm.getInterval() << " millisecond" << endl;
+	
+	tm.restart();
+		vector <double> qayes_vec =
 		popds.getVectorIf(
 			"score", "qaclass",
 			[]( double qaclass){ return ( std::round( qaclass) == 1.0); }
 		);
+	tm.markEnd();
+	cout << "Duration 3: " << tm.getInterval() << " millisecond" << endl;
+	
+	tm.restart();
 	vector <double> qano_vec =
 		popds.getVectorIf(
 			"score", "qaclass",
 			[]( double qaclass){ return ( std::round( qaclass) == 0.0); }
 		);
-	
+	tm.markEnd();
+	cout << "Duration 4: " << tm.getInterval() << " millisecond" << endl;
+
+	tm.restart();
+
 	{
 		koutputfile kof( output_fn1);
 		bool b = kof.open( false, false, true);
