@@ -7,6 +7,7 @@
 	-EHsc -utf-8 -std:c++17
 
 	開発していく用のフォルダ dev
+
 	このファイルでは、aichiの
 	　21a-qa-14.cpp　～　21a-qa-26.cpp
 	について、もう少し簡単に書けるように、
@@ -17,14 +18,6 @@
 	21a-qa-26.cpp　→できた。
 	21a-qa-25.cpp　→26でやった内容でカバーできている。
 	21a-qa-24.cpp　→26でやった内容でカバーできている。
-
-	↓あとで検討
-	・SimpleDatasetを使うのがよいとも限らない。
-	　CaseTypeをそのたびに定義してその中で操作する方が効率的な場合があるかも。以下の書き方など。
-	　std::vector<int> result(v.size());
-	　std::copy_if(v.begin(), v.end(), std::back_inserter(result), [](int x) { return x < 5; });
-	　std::transform(result.begin(), result.end(), result.begin(), [](int x) { return x + 3; });
-	　https://ja.stackoverflow.com/questions/61829/c%E3%81%A7%E3%81%AE%E9%96%A2%E6%95%B0%E5%9E%8B%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%9F%E3%83%B3%E3%82%B0%E3%81%AF%E8%89%AF%E3%81%84%E7%B5%90%E6%9E%9C%E3%82%92%E3%82%82%E3%81%9F%E3%82%89%E3%81%97%E3%81%BE%E3%81%99%E3%81%8B
 
 */
 
@@ -48,7 +41,7 @@
 #include <k09/kalgo02.cpp>
 #include <k09/kexcept00.cpp>
 #include <k09/kutil02.cpp>
-#include <k09/ksimpledataset00.cpp>
+#include <k09/ksimpleds00.cpp>
 
 
 /* ********** Namespace Declarations/Directives ********** */
